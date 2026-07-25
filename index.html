@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stand With Crypto — Message Your Senator on the CLARITY Act</title>
+<style>
+  /* ===== standalone shell (NOT part of the Builder embed — the live site provides nav/banner) ===== */
+  @import url('https://api.fontshare.com/v2/css?f[]=satoshi@500,700,900&display=swap');
+  body{margin:0; background:#fff;}
+  .swc-banner{
+    background:#6c11ff; color:#fff; text-align:center; padding:12px 20px;
+    font-family:'Satoshi',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    font-weight:700; font-size:15px;
+  }
+  .swc-nav{
+    max-width:1376px; margin:0 auto; padding:20px 24px;
+    display:flex; align-items:center; justify-content:space-between;
+    font-family:'Satoshi',-apple-system,sans-serif;
+  }
+  .swc-nav .brand{display:flex; align-items:center; gap:12px; font-weight:900; font-size:18px; color:#020817;}
+  .swc-shield{width:32px; height:32px; flex-shrink:0;}
+</style>
+</head>
+<body>
+
+<div class="swc-banner">It's time for the CLARITY Act — tell the Senate to move forward now!</div>
+<div class="swc-nav">
+  <div class="brand">
+    <svg class="swc-shield" width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M7.99953 0H0V14.3441C0.529429 21.8907 5.48357 28.3825 12.5714 30.8204L16 32V0H7.99953Z" fill="url(#swc_paint0)"/>
+      <path d="M24.0005 0H16V32L19.4286 30.8185C26.5183 28.3806 31.4706 21.8878 32 14.3413V0H23.9995H24.0005Z" fill="url(#swc_paint1)"/>
+      <defs>
+        <linearGradient id="swc_paint0" x1="7.99953" y1="0" x2="7.99953" y2="32" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#6100FF"/><stop offset="1" stop-color="#C09AFF"/>
+        </linearGradient>
+        <linearGradient id="swc_paint1" x1="24.0005" y1="0" x2="24.0005" y2="32" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#C09AFF"/><stop offset="1" stop-color="#6100FF"/>
+        </linearGradient>
+      </defs>
+    </svg>
+    Stand With Crypto
+  </div>
+</div>
+
+<!-- BUILDER-EMBED-START -->
+<style>
+  /* ============ SWC CLARITY message tool — all styles scoped under #swc-cam ============ */
+  #swc-cam{
+    --ink:#020817; --muted:#64748b; --line:#e2e9f3; --secondary:#f2f5f9; --secondary-hover:#e2e9f3;
+    --wash:#f9fafc; --primary:#6c11ff; --primary-hover:#923dfe; --primary-lightest:#f1eaff;
+    --primary-light:#e2d0ff; --input-border:#bcbfc2; --good:#00bb5a; --warn:#f89900; --bad:#ff2247;
+    --dark-blue:#006eff; --light-blue:#d7e8ff; --light-red:#ffd3d4; --light-green:#c6f7d1;
+    font-family:satoshiFont,'Satoshi',-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,sans-serif;
+    color:var(--ink); line-height:1.55; -webkit-font-smoothing:antialiased;
+    max-width:760px; margin:0 auto; padding:0 24px 80px;
+  }
+  #swc-cam *{box-sizing:border-box; margin:0; padding:0;}
+
+  /* progress */
+  #swc-cam .progress{display:flex; gap:8px; margin:18px 0 26px;}
+  #swc-cam .progress .seg{
+    flex:1; font-size:12.5px; color:var(--muted);
+    padding:10px 0 0; border-top:4px solid var(--line); border-radius:2px; transition:.25s;
+  }
+  #swc-cam .progress .seg.active{border-top-color:var(--primary); color:var(--ink); font-weight:700;}
+  #swc-cam .progress .seg.done{border-top-color:var(--good); color:var(--muted);}
+
+  /* cards / steps */
+  #swc-cam .step{display:none; animation:swcFade .3s ease;}
+  #swc-cam .step.active{display:block;}
+  @keyframes swcFade{from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:none;}}
+  #swc-cam .card{
+    background:#fff; border:1px solid var(--line);
+    border-radius:24px; padding:36px; margin-bottom:16px;
+  }
+  @media(max-width:560px){#swc-cam .card{padding:26px 20px;}}
+  #swc-cam h1{font-size:34px; line-height:1.15; margin-bottom:14px; letter-spacing:-.5px; font-weight:900;}
+  #swc-cam h2{font-size:23px; margin-bottom:6px; letter-spacing:-.3px; font-weight:700;}
+  #swc-cam .sub{color:var(--muted); font-size:15.5px; margin-bottom:20px;}
+  #swc-cam .hero-kicker{
+    display:inline-block; color:var(--primary); font-weight:700; font-size:12.5px;
+    letter-spacing:1.4px; text-transform:uppercase; margin-bottom:14px;
+    background:var(--primary-lightest); border-radius:1000px; padding:6px 16px;
+  }
+  #swc-cam .hero-stats{display:flex; gap:28px; margin:24px 0 6px; flex-wrap:wrap;}
+  #swc-cam .hero-stats div{font-size:13px; color:var(--muted);}
+  #swc-cam .hero-stats b{display:block; font-size:22px; color:var(--ink); font-weight:900;}
+
+  /* form */
+  #swc-cam label{display:block; font-size:14px; font-weight:700; margin:18px 0 6px;}
+  #swc-cam label .opt{color:var(--muted); font-weight:500;}
+  #swc-cam input[type=text], #swc-cam select, #swc-cam textarea{
+    width:100%; background:#fff; border:1px solid var(--input-border); color:var(--ink);
+    border-radius:12px; padding:13px 16px; font-size:15px; font-family:inherit;
+    outline:none; transition:border-color .15s, box-shadow .15s;
+  }
+  #swc-cam input:focus, #swc-cam select:focus, #swc-cam textarea:focus{
+    border-color:var(--primary); box-shadow:0 0 0 3px var(--primary-lightest);
+  }
+  #swc-cam textarea{min-height:96px; resize:vertical;}
+  #swc-cam .row{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+  @media(max-width:560px){#swc-cam .row{grid-template-columns:1fr;}}
+  #swc-cam .chips{display:flex; flex-wrap:wrap; gap:8px; margin-top:8px;}
+  #swc-cam .chip{
+    background:#fff; border:1px solid var(--line); color:var(--muted);
+    border-radius:1000px; padding:8px 16px; font-size:13.5px; font-weight:500;
+    cursor:pointer; transition:.15s; user-select:none;
+  }
+  #swc-cam .chip:hover{border-color:var(--primary-light); color:var(--ink); background:var(--wash);}
+  #swc-cam .chip.on{background:var(--primary-lightest); border-color:var(--primary); color:var(--primary); font-weight:700;}
+  #swc-cam .hint{font-size:12.5px; color:var(--muted); margin-top:6px;}
+  #swc-cam .skip-callout{
+    display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
+    background:var(--primary-lightest); border:1px solid var(--primary-light);
+    border-radius:14px; padding:12px 16px; margin-bottom:4px;
+  }
+  #swc-cam .skip-callout span{font-size:13.5px; font-weight:700; color:var(--ink);}
+  #swc-cam .skip-callout .btn{padding:10px 20px; font-size:13.5px; background:#fff;}
+  #swc-cam .skip-callout .btn:hover{background:var(--secondary);}
+
+  /* buttons */
+  #swc-cam .btn{
+    display:inline-flex; align-items:center; justify-content:center; gap:8px;
+    background:var(--primary); color:#fff; border:none; border-radius:1000px;
+    padding:15px 32px; font-size:15.5px; font-weight:700; cursor:pointer;
+    font-family:inherit; transition:.15s; text-decoration:none;
+  }
+  #swc-cam .btn:hover{background:var(--primary-hover);}
+  #swc-cam .btn.big{width:100%; padding:19px; font-size:16.5px;}
+  #swc-cam .btn.ghost{background:var(--secondary); color:var(--ink);}
+  #swc-cam .btn.ghost:hover{background:var(--secondary-hover);}
+  #swc-cam .btn.danger{background:var(--light-red); color:var(--bad);}
+  #swc-cam .btn.danger:hover{background:#ffc0c2;}
+  #swc-cam .btn:disabled{opacity:.4; cursor:not-allowed;}
+  #swc-cam .btnrow{display:flex; gap:12px; margin-top:26px; flex-wrap:wrap;}
+  #swc-cam .btnrow .spacer{flex:1;}
+
+  /* script review */
+  #swc-cam .script-box{
+    background:var(--wash); border:1px solid var(--line); border-radius:16px;
+    padding:6px; margin-top:14px;
+  }
+  #swc-cam .script-box textarea{border:none; background:transparent; min-height:190px; font-size:16.5px; line-height:1.7; box-shadow:none;}
+  #swc-cam .meter{display:flex; align-items:center; gap:10px; margin-top:12px; font-size:13px; color:var(--muted);}
+  #swc-cam .meter .bar{flex:1; height:8px; background:var(--secondary); border-radius:1000px; overflow:hidden;}
+  #swc-cam .meter .fill{height:100%; background:var(--good); width:0%; transition:.3s; border-radius:1000px;}
+  #swc-cam .meter .fill.warn{background:var(--warn);}
+  #swc-cam .meter .fill.bad{background:var(--bad);}
+
+  /* mode select */
+  #swc-cam .modes{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:8px;}
+  @media(max-width:560px){#swc-cam .modes{grid-template-columns:1fr;}}
+  #swc-cam .mode{
+    background:#fff; border:2px solid var(--line); border-radius:20px;
+    padding:28px 20px; text-align:center; cursor:pointer; transition:.15s;
+  }
+  #swc-cam .mode:hover{border-color:var(--primary-light);}
+  #swc-cam .mode.on{border-color:var(--primary); background:var(--primary-lightest);}
+  #swc-cam .mode .ico{font-size:36px; margin-bottom:10px;}
+  #swc-cam .mode b{display:block; font-size:16.5px; margin-bottom:4px; font-weight:700;}
+  #swc-cam .mode span{font-size:13px; color:var(--muted);}
+
+  /* recorder — stage stays dark: it frames live video */
+  #swc-cam .stage{
+    position:relative; background:#0b0d17; border-radius:20px; overflow:hidden;
+    aspect-ratio:16/10; border:1px solid var(--line); margin-top:14px;
+  }
+  /* mobile: portrait stage for a native selfie-video feel */
+  @media(max-width:560px){
+    #swc-cam .stage{aspect-ratio:9/16; max-height:68vh;}
+    #swc-cam video.playback{aspect-ratio:9/16; max-height:68vh;}
+  }
+  #swc-cam .stage video{width:100%; height:100%; object-fit:cover; transform:scaleX(-1); display:block;}
+  #swc-cam .audio-visual{
+    position:absolute; inset:0; display:none; align-items:center; justify-content:center;
+    background:radial-gradient(500px 300px at 50% 60%, #2a1259 0%, #13003b 70%);
+  }
+  #swc-cam .audio-visual .pulse{
+    width:86px; height:86px; border-radius:50%; display:grid; place-items:center; font-size:36px;
+    background:rgba(108,17,255,.25); border:2px solid var(--primary);
+  }
+  #swc-cam .recording .pulse{animation:swcPulse 1.2s ease-in-out infinite;}
+  @keyframes swcPulse{0%,100%{box-shadow:0 0 0 0 rgba(146,61,254,.55);} 50%{box-shadow:0 0 0 22px rgba(146,61,254,0);}}
+  #swc-cam .teleprompter{
+    position:absolute; left:0; right:0; bottom:0; height:46%;
+    background:linear-gradient(180deg, transparent 0%, rgba(2,8,23,.88) 30%, rgba(2,8,23,.95) 100%);
+    overflow:hidden; pointer-events:none;
+  }
+  #swc-cam .tp-inner{
+    padding:34px 8% 0; font-size:clamp(16px,2.6vw,21px); font-weight:700; line-height:1.65;
+    text-align:center; color:#fff; text-shadow:0 1px 6px rgba(0,0,0,.8); will-change:transform;
+  }
+  #swc-cam .rec-indicator{
+    position:absolute; top:12px; left:12px; display:none; align-items:center; gap:8px;
+    background:rgba(2,8,23,.6); border-radius:1000px; padding:6px 14px;
+    font-size:13.5px; font-weight:700; color:#fff;
+  }
+  #swc-cam .rec-indicator .dot{width:10px; height:10px; border-radius:50%; background:var(--bad); animation:swcBlink 1s infinite;}
+  @keyframes swcBlink{50%{opacity:.25;}}
+  #swc-cam .countdown{
+    position:absolute; inset:0; display:none; align-items:center; justify-content:center;
+    font-size:96px; font-weight:900; color:#fff; background:rgba(2,8,23,.55); z-index:5;
+  }
+  #swc-cam .rec-controls{display:flex; align-items:center; gap:14px; margin-top:16px; flex-wrap:wrap;}
+  #swc-cam .speed{display:flex; align-items:center; gap:8px; font-size:13px; color:var(--muted);}
+  #swc-cam .speed input{accent-color:var(--primary);}
+  #swc-cam .perm-error{
+    display:none; background:var(--light-red); border:1px solid var(--bad);
+    border-radius:16px; padding:18px 20px; margin-top:14px; font-size:14px;
+  }
+
+  /* review */
+  #swc-cam .playback{width:100%; border-radius:20px; background:#0b0d17; margin-top:14px; border:1px solid var(--line);}
+  #swc-cam video.playback{aspect-ratio:16/10;}
+
+  /* senators */
+  #swc-cam .senators{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:16px;}
+  @media(max-width:560px){#swc-cam .senators{grid-template-columns:1fr;}}
+  #swc-cam .sen{
+    background:var(--wash); border:1px solid var(--line); border-radius:20px; padding:20px;
+    display:flex; align-items:center; gap:14px;
+  }
+  #swc-cam .sen .avatar{
+    width:48px; height:48px; border-radius:50%; display:grid; place-items:center;
+    background:var(--primary-lightest); border:1px solid var(--primary-light);
+    color:var(--primary); font-weight:700; font-size:16px; flex-shrink:0;
+  }
+  #swc-cam .sen b{display:block; font-size:15.5px; font-weight:700;}
+  #swc-cam .sen span{font-size:13px; color:var(--muted);}
+  #swc-cam .party{font-size:11px; font-weight:700; border-radius:1000px; padding:2px 9px; margin-left:6px;}
+  #swc-cam .party.R{background:var(--light-red); color:var(--bad);}
+  #swc-cam .party.D{background:var(--light-blue); color:var(--dark-blue);}
+  #swc-cam .party.I{background:var(--light-green); color:var(--good);}
+
+  /* send */
+  #swc-cam .send-opts{display:flex; flex-direction:column; gap:12px; margin-top:16px;}
+  #swc-cam .send-opt{
+    display:flex; align-items:center; gap:16px; background:#fff;
+    border:1px solid var(--line); border-radius:20px; padding:18px 22px;
+    color:var(--ink); text-decoration:none; transition:.15s; cursor:pointer;
+  }
+  #swc-cam .send-opt:hover{border-color:var(--primary); background:var(--primary-lightest);}
+  #swc-cam .send-opt .ico{font-size:26px;}
+  #swc-cam .send-opt b{display:block; font-size:15.5px; font-weight:700;}
+  #swc-cam .send-opt span{font-size:13px; color:var(--muted);}
+
+  #swc-cam .done-banner{
+    display:none; background:var(--light-green); border:1px solid var(--good);
+    border-radius:16px; padding:16px 20px; margin-top:18px; font-size:14.5px;
+  }
+
+  /* consent */
+  #swc-cam .consent-row{
+    display:flex; align-items:flex-start; gap:12px; margin-top:20px;
+    background:var(--wash); border:1px solid var(--line); border-radius:14px; padding:16px 18px;
+    cursor:pointer;
+  }
+  #swc-cam .consent-row input{
+    margin-top:3px; width:18px; height:18px; accent-color:var(--primary); flex-shrink:0; cursor:pointer;
+  }
+  #swc-cam .consent-row span{font-size:13.5px; color:var(--muted); line-height:1.5;}
+  #swc-cam .upload-status{font-size:12.5px; color:var(--muted); margin-top:10px; min-height:16px;}
+  #swc-cam .upload-status.ok{color:var(--good);}
+  #swc-cam .upload-status.err{color:var(--bad);}
+</style>
+
+<div id="swc-cam">
+
+  <div class="progress">
+    <div class="seg" id="p1">1 · Build your script</div>
+    <div class="seg" id="p2">2 · Record</div>
+    <div class="seg" id="p3">3 · Send it</div>
+  </div>
+
+  <!-- ============ LANDING ============ -->
+  <section class="step active" id="step-landing">
+    <div class="card">
+      <div class="hero-kicker">The CLARITY Act · Senate Vote Ahead</div>
+      <h1>Put a face and a voice on crypto policy.</h1>
+      <p class="sub">Emails get skimmed. A 30-second message from a real constituent — in your own voice — gets watched. We'll help you write a short script, record a voice note or video, and get it in front of your senators. Takes about 3 minutes.</p>
+      <div class="hero-stats">
+        <div><b>~30 sec</b> message length</div>
+        <div><b>2</b> senators reached</div>
+        <div><b>3 min</b> start to finish</div>
+      </div>
+      <div class="btnrow">
+        <button class="btn big" onclick="SWCC.go('form')">Build My Message →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ QUESTIONS ============ -->
+  <section class="step" id="step-form">
+    <div class="card">
+      <h2>Tell us a little about yourself</h2>
+      <p class="sub">We'll turn this into a short, personal script. Nothing here is stored — it just builds your message.</p>
+
+      <div class="skip-callout">
+        <span>Already know what you want to tell your senators?</span>
+        <button class="btn ghost" onclick="SWCC.skipScript()">Skip & Start Recording →</button>
+      </div>
+
+      <div class="row">
+        <div>
+          <label for="f-name">Name</label>
+          <input type="text" id="f-name" placeholder="" autocomplete="off">
+        </div>
+        <div>
+          <label for="f-occupation">What do you do?</label>
+          <input type="text" id="f-occupation" placeholder="crypto user, developer, student, entrepreneur, etc" autocomplete="off">
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label for="f-city">City</label>
+          <input type="text" id="f-city" placeholder="" autocomplete="off">
+        </div>
+        <div>
+          <label for="f-state">State</label>
+          <select id="f-state"><option value="">Select your state…</option></select>
+        </div>
+      </div>
+
+      <label>Anything else about you worth sharing? <span class="opt">(optional — pick any)</span></label>
+      <div class="chips" id="bg-chips"></div>
+
+      <label for="f-why">Why does crypto matter to you or your community?</label>
+      <textarea id="f-why" placeholder="Finish the thought: “Crypto matters to me because…” — one or two sentences in your own words."></textarea>
+      <div class="chips" id="why-chips"></div>
+      <div class="hint">Tap a prompt to start from it, then make it yours.</div>
+
+      <div class="btnrow">
+        <button class="btn ghost" onclick="SWCC.go('landing')">← Back</button>
+        <div class="spacer"></div>
+        <button class="btn" id="btn-generate" onclick="SWCC.buildScript()">Generate My Script →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SCRIPT REVIEW ============ -->
+  <section class="step" id="step-script">
+    <div class="card">
+      <h2>Here's your script</h2>
+      <p class="sub">Edit anything — it should sound like you. Aim for around 30 seconds.</p>
+      <div class="script-box"><textarea id="script-text" oninput="SWCC.updateMeter()"></textarea></div>
+      <div class="meter">
+        <span id="meter-label">0 sec</span>
+        <div class="bar"><div class="fill" id="meter-fill"></div></div>
+        <span>target ~30s</span>
+      </div>
+      <div class="btnrow">
+        <button class="btn ghost" onclick="SWCC.go('form')">← Edit Answers</button>
+        <button class="btn ghost" onclick="SWCC.buildScript()">↻ Regenerate</button>
+        <div class="spacer"></div>
+        <button class="btn" onclick="SWCC.proceedToDelivery()">Looks Good →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ MODE SELECT ============ -->
+  <section class="step" id="step-mode">
+    <div class="card">
+      <h2>How do you want to deliver it?</h2>
+      <p class="sub">Both work. Video is the most personal; a voice note is faster and camera-free.</p>
+      <div class="modes">
+        <div class="mode" id="mode-video" onclick="SWCC.pickMode('video')">
+          <div class="ico">🎥</div><b>Video Message</b>
+          <span>Direct to camera, with your script on screen like a teleprompter</span>
+        </div>
+        <div class="mode" id="mode-audio" onclick="SWCC.pickMode('audio')">
+          <div class="ico">🎙️</div><b>Voice Note</b>
+          <span>Audio only — your script stays on screen while you speak</span>
+        </div>
+      </div>
+      <div class="btnrow">
+        <button class="btn ghost" onclick="SWCC.backFromMode()">← Back</button>
+        <div class="spacer"></div>
+        <button class="btn" id="btn-mode-next" disabled onclick="SWCC.startRecorderStep()">Continue →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ RECORD ============ -->
+  <section class="step" id="step-record">
+    <div class="card">
+      <h2 id="rec-title">Record your message</h2>
+      <p class="sub" id="rec-sub">Your script will scroll below. Hit record, take a breath, and talk like you're leaving a friend a voicemail.</p>
+
+      <div class="stage" id="stage">
+        <video id="preview" autoplay muted playsinline></video>
+        <div class="audio-visual" id="audio-visual"><div class="pulse">🎙️</div></div>
+        <div class="teleprompter"><div class="tp-inner" id="tp-text"></div></div>
+        <div class="rec-indicator" id="rec-ind"><div class="dot"></div><span id="rec-timer">0:00</span></div>
+        <div class="countdown" id="countdown">3</div>
+      </div>
+
+      <div class="perm-error" id="perm-error">
+        <b>Camera/mic access was blocked.</b><br>
+        Enable permissions for this page in your browser settings, then hit “Try Again.” (In production this state gets a friendlier walkthrough per browser.)
+      </div>
+
+      <div class="rec-controls">
+        <button class="btn" id="btn-rec" onclick="SWCC.toggleRecord()" disabled>● Start Recording</button>
+        <button class="btn ghost" id="btn-retry-perm" style="display:none" onclick="SWCC.initCapture()">Try Again</button>
+        <div class="spacer"></div>
+        <div class="speed">Scroll speed <input type="range" id="tp-speed" min="14" max="60" value="30"></div>
+      </div>
+      <div class="btnrow">
+        <button class="btn ghost" onclick="SWCC.leaveRecorderBack()">← Back</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ REVIEW RECORDING ============ -->
+  <section class="step" id="step-review">
+    <div class="card">
+      <h2>How'd it go?</h2>
+      <p class="sub">Give it a listen. Nobody nails it on take one — re-record as many times as you like.</p>
+      <video class="playback" id="playback-video" controls playsinline style="display:none"></video>
+      <audio class="playback" id="playback-audio" controls style="display:none"></audio>
+
+      <label class="consent-row">
+        <input type="checkbox" id="consent-checkbox">
+        <span>I consent to Stand With Crypto using this video for advocacy purposes (e.g., a compilation reel of constituent messages). SWC will not use it for anything else.</span>
+      </label>
+      <div class="upload-status" id="upload-status"></div>
+
+      <div class="btnrow">
+        <button class="btn danger" onclick="SWCC.startRecorderStep()">↺ Re-record</button>
+        <div class="spacer"></div>
+        <button class="btn" onclick="SWCC.approveAndContinue()">Approve & Continue →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SENATORS ============ -->
+  <section class="step" id="step-senators">
+    <div class="card">
+      <h2>Your senators</h2>
+      <p class="sub">Based on your state — change it if needed.</p>
+      <select id="sen-state" onchange="SWCC.renderSenators()"></select>
+      <div class="senators" id="sen-cards"></div>
+      <div class="btnrow">
+        <button class="btn ghost" onclick="SWCC.go('review')">← Back</button>
+        <div class="spacer"></div>
+        <button class="btn" onclick="SWCC.go('send')">Send My Message →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SEND ============ -->
+  <section class="step" id="step-send">
+    <div class="card">
+      <h2>Get it in front of them</h2>
+      <p class="sub" id="send-sub">Download your recording, then post to X. Tagging your senator publicly is often what gets a staffer's attention.</p>
+
+      <div class="send-opts">
+        <a class="send-opt" id="opt-download">
+          <div class="ico">⬇️</div>
+          <div><b>Download your recording</b><span>Save it first — you'll attach it to your post in the next step</span></div>
+        </a>
+        <a class="send-opt" id="opt-social" target="_blank" rel="noopener">
+          <div class="ico">𝕏</div>
+          <div><b>Post to X and tag your senators</b><span id="opt-social-desc">Opens X with your message and their @handles pre-filled — attach your downloaded video, then post</span></div>
+        </a>
+      </div>
+
+      <div class="done-banner" id="done-banner">
+        🎉 <b>That's advocacy done right.</b> Real name, real face, real stakes. Thank you for standing up — share this tool with one other person who should do the same.
+      </div>
+
+      <div class="btnrow">
+        <button class="btn ghost" onclick="SWCC.go('senators')">← Back</button>
+        <div class="spacer"></div>
+        <button class="btn" onclick="SWCC.finish()">I Sent It ✓</button>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+window.SWCC = (function(){
+/* ---------------- data ---------------- */
+const STATES = {
+  AL:"Alabama",AK:"Alaska",AZ:"Arizona",AR:"Arkansas",CA:"California",CO:"Colorado",CT:"Connecticut",
+  DE:"Delaware",FL:"Florida",GA:"Georgia",HI:"Hawaii",ID:"Idaho",IL:"Illinois",IN:"Indiana",IA:"Iowa",
+  KS:"Kansas",KY:"Kentucky",LA:"Louisiana",ME:"Maine",MD:"Maryland",MA:"Massachusetts",MI:"Michigan",
+  MN:"Minnesota",MS:"Mississippi",MO:"Missouri",MT:"Montana",NE:"Nebraska",NV:"Nevada",NH:"New Hampshire",
+  NJ:"New Jersey",NM:"New Mexico",NY:"New York",NC:"North Carolina",ND:"North Dakota",OH:"Ohio",
+  OK:"Oklahoma",OR:"Oregon",PA:"Pennsylvania",RI:"Rhode Island",SC:"South Carolina",SD:"South Dakota",
+  TN:"Tennessee",TX:"Texas",UT:"Utah",VT:"Vermont",VA:"Virginia",WA:"Washington",WV:"West Virginia",
+  WI:"Wisconsin",WY:"Wyoming"
+};
+/* Sourced from unitedstates/congress-legislators (current members + social media), joined by bioguide ID.
+   twitter:null means no handle on file for that office as of this data pull — spot-check before launch. */
+const SENATORS = {
+  AK:[{name:"Lisa Murkowski",party:"R",twitter:"LisaMurkowski"},{name:"Dan Sullivan",party:"R",twitter:"SenDanSullivan"}],
+  AL:[{name:"Tommy Tuberville",party:"R",twitter:"SenTuberville"},{name:"Katie Britt",party:"R",twitter:"SenKatieBritt"}],
+  AR:[{name:"John Boozman",party:"R",twitter:"JohnBoozman"},{name:"Tom Cotton",party:"R",twitter:"SenTomCotton"}],
+  AZ:[{name:"Ruben Gallego",party:"D",twitter:"RepRubenGallego"},{name:"Mark Kelly",party:"D",twitter:"SenMarkKelly"}],
+  CA:[{name:"Adam Schiff",party:"D",twitter:"SenAdamSchiff"},{name:"Alejandro Padilla",party:"D",twitter:"SenAlexPadilla"}],
+  CO:[{name:"Michael Bennet",party:"D",twitter:"SenatorBennet"},{name:"John Hickenlooper",party:"D",twitter:"SenatorHick"}],
+  CT:[{name:"Richard Blumenthal",party:"D",twitter:"SenBlumenthal"},{name:"Christopher Murphy",party:"D",twitter:"SenMurphyOffice"}],
+  DE:[{name:"Christopher Coons",party:"D",twitter:"ChrisCoons"},{name:"Lisa Blunt Rochester",party:"D",twitter:"SenLBR"}],
+  FL:[{name:"Rick Scott",party:"R",twitter:"SenRickScott"},{name:"Ashley Moody",party:"R",twitter:null}],
+  GA:[{name:"Jon Ossoff",party:"D",twitter:"SenOssoff"},{name:"Raphael Warnock",party:"D",twitter:"SenatorWarnock"}],
+  HI:[{name:"Mazie Hirono",party:"D",twitter:"MazieHirono"},{name:"Brian Schatz",party:"D",twitter:"SenBrianSchatz"}],
+  IA:[{name:"Charles Grassley",party:"R",twitter:"ChuckGrassley"},{name:"Joni Ernst",party:"R",twitter:"SenJoniErnst"}],
+  ID:[{name:"James Risch",party:"R",twitter:"SenatorRisch"},{name:"Michael Crapo",party:"R",twitter:"MikeCrapo"}],
+  IL:[{name:"Richard Durbin",party:"D",twitter:"SenatorDurbin"},{name:"Tammy Duckworth",party:"D",twitter:"SenDuckworth"}],
+  IN:[{name:"Todd Young",party:"R",twitter:"SenToddYoung"},{name:"Jim Banks",party:"R",twitter:"RepJimBanks"}],
+  KS:[{name:"Jerry Moran",party:"R",twitter:"JerryMoran"},{name:"Roger Marshall",party:"R",twitter:"SenatorMarshall"}],
+  KY:[{name:"Mitch McConnell",party:"R",twitter:"McConnellPress"},{name:"Rand Paul",party:"R",twitter:"SenRandPaul"}],
+  LA:[{name:"Bill Cassidy",party:"R",twitter:"SenBillCassidy"},{name:"John Kennedy",party:"R",twitter:"SenJohnKennedy"}],
+  MA:[{name:"Edward Markey",party:"D",twitter:"SenMarkey"},{name:"Elizabeth Warren",party:"D",twitter:"SenWarren"}],
+  MD:[{name:"Chris Van Hollen",party:"D",twitter:"ChrisVanHollen"},{name:"Angela Alsobrooks",party:"D",twitter:null}],
+  ME:[{name:"Susan Collins",party:"R",twitter:"SenatorCollins"},{name:"Angus King",party:"I",twitter:"SenAngusKing"}],
+  MI:[{name:"Gary Peters",party:"D",twitter:"SenGaryPeters"},{name:"Elissa Slotkin",party:"D",twitter:"RepSlotkin"}],
+  MN:[{name:"Amy Klobuchar",party:"D",twitter:"SenAmyKlobuchar"},{name:"Tina Smith",party:"D",twitter:"SenTinaSmith"}],
+  MO:[{name:"Joshua Hawley",party:"R",twitter:"SenHawleyPress"},{name:"Eric Schmitt",party:"R",twitter:"SenEricSchmitt"}],
+  MS:[{name:"Roger Wicker",party:"R",twitter:"SenatorWicker"},{name:"Cindy Hyde-Smith",party:"R",twitter:"SenHydeSmith"}],
+  MT:[{name:"Steve Daines",party:"R",twitter:"SteveDaines"},{name:"Tim Sheehy",party:"R",twitter:null}],
+  NC:[{name:"Thom Tillis",party:"R",twitter:"SenThomTillis"},{name:"Ted Budd",party:"R",twitter:"RepTedBudd"}],
+  ND:[{name:"John Hoeven",party:"R",twitter:"SenJohnHoeven"},{name:"Kevin Cramer",party:"R",twitter:"SenKevinCramer"}],
+  NE:[{name:"Deb Fischer",party:"R",twitter:"SenatorFischer"},{name:"Pete Ricketts",party:"R",twitter:"SenatorRicketts"}],
+  NH:[{name:"Jeanne Shaheen",party:"D",twitter:"SenatorShaheen"},{name:"Margaret Hassan",party:"D",twitter:"SenatorHassan"}],
+  NJ:[{name:"Cory Booker",party:"D",twitter:"SenBooker"},{name:"Andy Kim",party:"D",twitter:null}],
+  NM:[{name:"Martin Heinrich",party:"D",twitter:"MartinHeinrich"},{name:"Ben Luján",party:"D",twitter:"SenatorLujan"}],
+  NV:[{name:"Catherine Cortez Masto",party:"D",twitter:"SenCortezMasto"},{name:"Jacky Rosen",party:"D",twitter:"SenJackyRosen"}],
+  NY:[{name:"Kirsten Gillibrand",party:"D",twitter:"GillibrandNY"},{name:"Charles Schumer",party:"D",twitter:"SenSchumer"}],
+  OH:[{name:"Bernie Moreno",party:"R",twitter:"berniemoreno"},{name:"Jon Husted",party:"R",twitter:null}],
+  OK:[{name:"James Lankford",party:"R",twitter:"SenatorLankford"},{name:"Alan Armstrong",party:"R",twitter:null}],
+  OR:[{name:"Jeff Merkley",party:"D",twitter:"SenJeffMerkley"},{name:"Ron Wyden",party:"D",twitter:"RonWyden"}],
+  PA:[{name:"John Fetterman",party:"D",twitter:null},{name:"Dave McCormick",party:"R",twitter:null}],
+  RI:[{name:"Sheldon Whitehouse",party:"D",twitter:"SenWhitehouse"},{name:"John Reed",party:"D",twitter:"SenJackReed"}],
+  SC:[{name:"Tim Scott",party:"R",twitter:"SenatorTimScott"},{name:"Darline Graham Nordone",party:"R",twitter:null}],
+  SD:[{name:"John Thune",party:"R",twitter:"SenJohnThune"},{name:"Mike Rounds",party:"R",twitter:"SenatorRounds"}],
+  TN:[{name:"Marsha Blackburn",party:"R",twitter:"MarshaBlackburn"},{name:"Bill Hagerty",party:"R",twitter:"SenatorHagerty"}],
+  TX:[{name:"John Cornyn",party:"R",twitter:"JohnCornyn"},{name:"Ted Cruz",party:"R",twitter:"SenTedCruz"}],
+  UT:[{name:"Mike Lee",party:"R",twitter:"SenMikeLee"},{name:"John Curtis",party:"R",twitter:"RepJohnCurtis"}],
+  VA:[{name:"Mark Warner",party:"D",twitter:"MarkWarner"},{name:"Timothy Kaine",party:"D",twitter:null}],
+  VT:[{name:"Bernard Sanders",party:"I",twitter:"SenSanders"},{name:"Peter Welch",party:"D",twitter:"PeterWelch"}],
+  WA:[{name:"Maria Cantwell",party:"D",twitter:"SenatorCantwell"},{name:"Patty Murray",party:"D",twitter:"PattyMurray"}],
+  WI:[{name:"Tammy Baldwin",party:"D",twitter:"SenatorBaldwin"},{name:"Ron Johnson",party:"R",twitter:"SenRonJohnson"}],
+  WV:[{name:"Shelley Capito",party:"R",twitter:"SenCapito"},{name:"Jim Justice",party:"R",twitter:null}],
+  WY:[{name:"John Barrasso",party:"R",twitter:"SenJohnBarrasso"},{name:"Cynthia Lummis",party:"R",twitter:"SenLummis"}]
+};
+const BACKGROUNDS = [
+  ["veteran","I'm a veteran of the U.S. armed forces."],
+  ["small business owner","I own a small business."],
+  ["law enforcement","I've served in law enforcement."],
+  ["first responder","I'm a first responder."],
+  ["teacher / educator","I'm an educator."],
+  ["healthcare worker","I work in healthcare."],
+  ["farmer / rural community","I come from a farming and rural community."],
+  ["union member","I'm a union member."],
+  ["parent","I'm a parent."],
+  ["student","I'm a student."],
+  ["first-generation American","I'm a first-generation American."],
+  ["faith community leader","I'm a leader in my faith community."]
+];
+const WHY_PROMPTS = [
+  "it cut payment costs for my business",
+  "it gives communities banks left behind a way in",
+  "I want the jobs and builders to stay in America",
+  "I believe people should be able to hold their own money"
+];
+
+/* ---------------- state ---------------- */
+const S = { mode:null, blob:null, blobURL:null, mime:'', swcVideoUrl:null, voiceEnabled:false };
+let mediaStream=null, recorder=null, chunks=[], recStart=0, timerInt=null;
+let tpAnim=null, tpY=0, tpLast=0;
+
+const $ = id => document.getElementById(id);
+
+/* ---------------- init ---------------- */
+function init(){
+  const sel = $('f-state'), sel2 = $('sen-state');
+  for(const [code,name] of Object.entries(STATES)){
+    sel.add(new Option(name,code));
+    sel2.add(new Option(name,code));
+  }
+  const bg = $('bg-chips');
+  BACKGROUNDS.forEach(([label])=>{
+    const c=document.createElement('div'); c.className='chip'; c.textContent=label;
+    c.onclick=()=>c.classList.toggle('on'); bg.appendChild(c);
+  });
+  const wc = $('why-chips');
+  WHY_PROMPTS.forEach(p=>{
+    const c=document.createElement('div'); c.className='chip'; c.textContent='“…'+p+'”';
+    c.onclick=()=>{ $('f-why').value = p; $('f-why').focus(); };
+    wc.appendChild(c);
+  });
+  loadConfig();
+}
+
+/* ---------------- remote feature flags (admin-toggled via /api/config) ---------------- */
+async function loadConfig(){
+  try{
+    const r = await fetch('/api/config', {cache:'no-store'});
+    if(r.ok){ const c = await r.json(); S.voiceEnabled = !!c.voiceNotesEnabled; }
+  }catch(e){ /* non-Vercel host (local file / embed preview): keep default */ }
+  applyConfig();
+}
+function applyConfig(){
+  $('mode-audio').style.display = S.voiceEnabled ? '' : 'none';
+  const landingSub = document.querySelector('#step-landing .sub');
+  if(landingSub) landingSub.textContent = S.voiceEnabled
+    ? "Emails get skimmed. A 30-second message from a real constituent — in your own voice — gets watched. We'll help you write a short script, record a voice note or video, and get it in front of your senators. Takes about 3 minutes."
+    : "Emails get skimmed. A 30-second message from a real constituent — face to camera — gets watched. We'll help you write a short script, record your video, and get it in front of your senators. Takes about 3 minutes.";
+}
+if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', init);
+else init();
+
+/* ---------------- navigation ---------------- */
+const PHASE = {landing:1,form:1,script:1,mode:2,record:2,review:2,senators:3,send:3};
+function go(step){
+  document.querySelectorAll('#swc-cam .step').forEach(s=>s.classList.remove('active'));
+  $('step-'+step).classList.add('active');
+  const ph = PHASE[step]||1;
+  [1,2,3].forEach(i=>{
+    const el=$('p'+i);
+    el.classList.toggle('active', i===ph);
+    el.classList.toggle('done', i<ph);
+  });
+  const top = document.getElementById('swc-cam').getBoundingClientRect().top + window.scrollY - 20;
+  window.scrollTo({top:Math.max(0,top), behavior:'smooth'});
+}
+
+/* ---------------- script generation ---------------- */
+function aOrAn(w){ return /^[aeiou]/i.test(w.trim()) ? 'an' : 'a'; }
+function buildScript(){
+  const name=$('f-name').value.trim(), occ=$('f-occupation').value.trim(),
+        city=$('f-city').value.trim(), st=$('f-state').value;
+  if(!name || !st){ alert('Add at least your first name and state so the script sounds like a constituent.'); return; }
+  const stateName = STATES[st];
+  const bgs=[...document.querySelectorAll('#bg-chips .chip.on')].map(c=>c.textContent);
+  const bgLines = BACKGROUNDS.filter(([l])=>bgs.includes(l)).map(([,s])=>s).slice(0,2);
+
+  let why=$('f-why').value.trim().replace(/^(because|since)\s+/i,'').replace(/\.+$/,'');
+
+  const parts=[];
+  parts.push(`Hello Senator, my name is ${name}` +
+    (occ ? `, and I'm ${aOrAn(occ)} ${occ}` : '') +
+    (city ? ` from ${city}, ${stateName}.` : ` from ${stateName}.`));
+  if(bgLines.length) parts.push(bgLines.join(' '));
+  parts.push(`I'm one of millions of Americans who use crypto — and one of your constituents.`);
+  if(why) parts.push(`Crypto matters to me because ${why}.`);
+  parts.push(`That's why I'm asking you to pass the CLARITY Act. We need clear rules of the road that protect consumers and keep this innovation — and these jobs — here in America.`);
+  parts.push(`Please support the CLARITY Act. Thank you.`);
+
+  $('script-text').value = parts.join(' ');
+  updateMeter();
+  go('script');
+}
+function updateMeter(){
+  const words = $('script-text').value.trim().split(/\s+/).filter(Boolean).length;
+  const secs = Math.round(words/2.4);
+  $('meter-label').textContent = `~${secs} sec · ${words} words`;
+  const fill = $('meter-fill');
+  fill.style.width = Math.min(100, secs/45*100) + '%';
+  fill.className = 'fill' + (secs>42 ? ' bad' : secs>34 ? ' warn' : '');
+}
+
+/* ---------------- mode ---------------- */
+function pickMode(m){
+  S.mode=m;
+  $('mode-video').classList.toggle('on', m==='video');
+  $('mode-audio').classList.toggle('on', m==='audio');
+  $('btn-mode-next').disabled=false;
+}
+
+/* ---------------- skip / back nav ---------------- */
+function proceedToDelivery(){
+  if(S.voiceEnabled){ go('mode'); }
+  else { pickMode('video'); startRecorderStep(); }
+}
+function skipScript(){ proceedToDelivery(); }
+function backFromMode(){ go($('script-text').value.trim() ? 'script' : 'form'); }
+function leaveRecorderBack(){
+  cancelRecording(); stopStream();
+  if(S.voiceEnabled) go('mode'); else backFromMode();
+}
+
+/* ---------------- recorder ---------------- */
+function startRecorderStep(){
+  go('record');
+  $('rec-title').textContent = S.mode==='video' ? 'Record your video message' : 'Record your voice note';
+  const script = $('script-text').value.trim();
+  $('tp-text').textContent = script;
+  document.querySelector('#swc-cam .teleprompter').style.display = script ? 'block' : 'none';
+  $('rec-sub').textContent = script
+    ? "Your script will scroll below. Hit record, take a breath, and talk like you're leaving a friend a voicemail."
+    : "No script — you've got this. Hit record, take a breath, and speak from the heart. Aim for about 30 seconds.";
+  resetTeleprompter();
+  initCapture();
+}
+async function initCapture(){
+  $('perm-error').style.display='none';
+  $('btn-retry-perm').style.display='none';
+  stopStream();
+  const video = S.mode==='video';
+  $('preview').style.display = video ? 'block':'none';
+  $('audio-visual').style.display = video ? 'none':'flex';
+  try{
+    // portrait capture on mobile, landscape on desktop
+    const portrait = window.matchMedia('(max-width: 560px)').matches;
+    const videoConstraints = portrait
+      ? {facingMode:'user', width:{ideal:720}, height:{ideal:1280}}
+      : {facingMode:'user', width:{ideal:1280}};
+    mediaStream = await navigator.mediaDevices.getUserMedia({
+      audio:true, video: video ? videoConstraints : false
+    });
+    if(video) $('preview').srcObject = mediaStream;
+    $('btn-rec').disabled=false;
+  }catch(e){
+    $('perm-error').style.display='block';
+    $('btn-retry-perm').style.display='inline-flex';
+    $('btn-rec').disabled=true;
+  }
+}
+function stopStream(){
+  if(mediaStream){ mediaStream.getTracks().forEach(t=>t.stop()); mediaStream=null; }
+}
+function leaveRecorder(dest){ cancelRecording(); stopStream(); go(dest); }
+
+function toggleRecord(){
+  if(recorder && recorder.state==='recording'){ stopRecording(); return; }
+  const cd=$('countdown'); let n=3;
+  cd.style.display='flex'; cd.textContent=n;
+  $('btn-rec').disabled=true;
+  const int=setInterval(()=>{
+    n--;
+    if(n<=0){ clearInterval(int); cd.style.display='none'; beginRecording(); }
+    else cd.textContent=n;
+  },900);
+}
+function beginRecording(){
+  chunks=[];
+  const prefs = S.mode==='video'
+    ? ['video/mp4','video/webm;codecs=vp9','video/webm']
+    : ['audio/mp4','audio/webm;codecs=opus','audio/webm'];
+  S.mime = prefs.find(m=>window.MediaRecorder && MediaRecorder.isTypeSupported(m)) || '';
+  recorder = new MediaRecorder(mediaStream, S.mime ? {mimeType:S.mime} : undefined);
+  recorder.ondataavailable = e=>{ if(e.data.size) chunks.push(e.data); };
+  recorder.onstop = ()=>{
+    S.blob = new Blob(chunks, {type: S.mime || (S.mode==='video'?'video/webm':'audio/webm')});
+    if(S.blobURL) URL.revokeObjectURL(S.blobURL);
+    S.blobURL = URL.createObjectURL(S.blob);
+    showReview();
+  };
+  recorder.start();
+  recStart=Date.now();
+  $('rec-ind').style.display='flex';
+  $('stage').classList.add('recording');
+  $('btn-rec').disabled=false;
+  $('btn-rec').textContent='■ Stop Recording';
+  $('btn-rec').style.background='var(--bad)';
+  timerInt=setInterval(()=>{
+    const s=Math.floor((Date.now()-recStart)/1000);
+    const el=$('rec-timer');
+    el.textContent=`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
+    el.style.color = s>45?'var(--bad)': s>35?'var(--warn)':'#fff';
+  },250);
+  startTeleprompter();
+}
+function stopRecording(){
+  if(recorder && recorder.state==='recording') recorder.stop();
+  cancelRecording();
+}
+function cancelRecording(){
+  clearInterval(timerInt);
+  cancelAnimationFrame(tpAnim);
+  $('rec-ind').style.display='none';
+  $('stage').classList.remove('recording');
+  const b=$('btn-rec');
+  b.textContent='● Start Recording'; b.style.background='';
+}
+function resetTeleprompter(){ tpY=0; $('tp-text').style.transform='translateY(0)'; }
+function startTeleprompter(){
+  resetTeleprompter(); tpLast=performance.now();
+  const stepFn = now=>{
+    const speed = +$('tp-speed').value;           // px per second
+    tpY += speed*(now-tpLast)/1000; tpLast=now;
+    $('tp-text').style.transform=`translateY(${-tpY}px)`;
+    tpAnim=requestAnimationFrame(stepFn);
+  };
+  tpAnim=requestAnimationFrame(stepFn);
+}
+
+/* ---------------- review ---------------- */
+function showReview(){
+  stopStream();
+  go('review');
+  const v=$('playback-video'), a=$('playback-audio');
+  v.style.display='none'; a.style.display='none';
+  if(S.mode==='video'){ v.src=S.blobURL; v.style.display='block'; }
+  else { a.src=S.blobURL; a.style.display='block'; }
+}
+
+/* ---------------- senators & send ---------------- */
+function showSenators(){
+  const st=$('f-state').value;
+  if(st) $('sen-state').value=st;
+  renderSenators();
+  go('senators');
+}
+function renderSenators(){
+  const st=$('sen-state').value;
+  const wrap=$('sen-cards'); wrap.innerHTML='';
+  (SENATORS[st]||[]).forEach(sen=>{
+    const initials=sen.name.split(' ').map(w=>w[0]).slice(0,2).join('');
+    const d=document.createElement('div'); d.className='sen';
+    d.innerHTML=`<div class="avatar">${initials}</div>
+      <div><b>Sen. ${sen.name}<span class="party ${sen.party}">${sen.party}</span></b>
+      <span>${sen.twitter ? '@'+sen.twitter : STATES[st]||''}</span></div>`;
+    wrap.appendChild(d);
+  });
+  prepSendLinks();
+}
+function prepSendLinks(){
+  const st=$('sen-state').value;
+  const sens=SENATORS[st]||[];
+  const ext = (S.mime||'').includes('mp4') ? (S.mode==='video'?'.mp4':'.m4a') : '.webm';
+  const fname = 'clarity-act-message'+ext;
+
+  const dl=$('opt-download');
+  dl.href=S.blobURL||'#'; dl.download=fname;
+
+  const tags = sens.map(s => s.twitter ? '@'+s.twitter : 'Sen. '+s.name).join(' ');
+  let text =
+`I just recorded a message for ${tags}: pass the CLARITY Act. Clear rules protect consumers and keep crypto jobs in America. 🇺🇸 @StandWithCrypto #CLARITYAct`;
+  if(S.swcVideoUrl){
+    text += `\n\nWatch my message: ${S.swcVideoUrl}`;
+    $('opt-social-desc').textContent = 'Opens X with your message, their @handles, and your video link already in the post — just hit post';
+  } else {
+    $('opt-social-desc').textContent = 'Opens X with your message and their @handles pre-filled — attach your downloaded video, then post';
+  }
+  $('opt-social').href=`https://x.com/intent/post?text=${encodeURIComponent(text)}`;
+}
+function finish(){
+  $('done-banner').style.display='block';
+  window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'});
+}
+
+/* ---------------- consent + SWC storage ---------------- */
+async function uploadToSWC(blob, meta){
+  const status=$('upload-status');
+  status.textContent='Saving a copy for SWC…'; status.className='upload-status';
+  try{
+    const mod = await import('https://esm.sh/@vercel/blob@2.6.1/client');
+    const isVideo = meta.mode==='video';
+    const ext = (S.mime||'').includes('mp4') ? (isVideo?'mp4':'m4a') : 'webm';
+    const safeState = (meta.state||'na').replace(/[^a-zA-Z0-9-]/g,'');
+    const pathname = `submissions/${Date.now()}-${safeState}-${meta.mode}.${ext}`;
+    const result = await mod.upload(pathname, blob, {
+      access:'public',
+      handleUploadUrl:'/api/blob-upload',
+      contentType: blob.type || (isVideo?'video/webm':'audio/webm'),
+      clientPayload: JSON.stringify(meta),
+    });
+    S.swcVideoUrl = location.origin + '/api/watch?m=' + encodeURIComponent(meta.mode) + '&v=' + encodeURIComponent(result.url);
+    prepSendLinks();
+    status.textContent='Saved for SWC — thank you.'; status.className='upload-status ok';
+  }catch(e){
+    console.error('SWC upload failed', e);
+    status.textContent="Couldn't save a copy for SWC, but your message still works below.";
+    status.className='upload-status err';
+  }
+}
+function approveAndContinue(){
+  const consent = $('consent-checkbox').checked;
+  if(consent && S.blob){
+    uploadToSWC(S.blob, {
+      name: $('f-name').value.trim(),
+      occupation: $('f-occupation').value.trim(),
+      city: $('f-city').value.trim(),
+      state: $('f-state').value,
+      why: $('f-why').value.trim(),
+      script: $('script-text').value,
+      mode: S.mode,
+      consent: true,
+    });
+  }
+  showSenators();
+}
+
+return {go, buildScript, updateMeter, pickMode, startRecorderStep, initCapture,
+        leaveRecorder, leaveRecorderBack, toggleRecord, showSenators, renderSenators,
+        approveAndContinue, skipScript, backFromMode, proceedToDelivery, finish};
+})();
+</script>
+<!-- BUILDER-EMBED-END -->
+
+</body>
+</html>

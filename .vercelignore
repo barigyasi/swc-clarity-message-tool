@@ -1,0 +1,4 @@
+.env.local
+.env*.local
+.admin_token_local.txt
+*.json.bak
