@@ -580,7 +580,7 @@ const WHY_PROMPTS = [
 ];
 
 /* ---------------- state ---------------- */
-const S = { mode:null, blob:null, blobURL:null, mime:'', swcVideoUrl:null, compositeDownloadUrl:null, shareFile:null, voiceEnabled:false };
+const S = { mode:null, blob:null, blobURL:null, mime:'', swcVideoUrl:null, compositeDownloadUrl:null, shareFile:null, compositePending:false, voiceEnabled:false };
 let mediaStream=null, recorder=null, chunks=[], recStart=0, timerInt=null;
 let tpAnim=null, tpY=0, tpLast=0;
 
@@ -850,11 +850,13 @@ function prepSendLinks(){
   let text = buildPostText();
   if(S.swcVideoUrl) text += `\n\nWatch my message: ${S.swcVideoUrl}`;
   $('opt-social').href=`https://x.com/intent/post?text=${encodeURIComponent(text)}`;
-  $('opt-social-desc').textContent = S.swcVideoUrl
-    ? 'Opens X with your message, their @handles, and your video link already in the post — just hit post'
-    : 'Opens X with your message and their @handles pre-filled — attach your downloaded video, then post';
+  $('opt-social-desc').textContent = S.compositePending
+    ? 'Your voicemail video is processing — one moment…'
+    : S.swcVideoUrl
+      ? 'Opens X with your message, their @handles, and your video link already in the post — just hit post'
+      : 'Opens X with your message and their @handles pre-filled — attach your downloaded video, then post';
 
-  prepareShareFile();  // async; upgrades the button to a native share sheet when possible
+  prepareShareFile();  // async; upgrades the button to a native share flow when possible
 }
 
 /* ---------------- Post to X (Web Share API, mobile-first) ---------------- */
@@ -878,16 +880,17 @@ async function prepareShareFile(){
       S.shareFile = new File([S.blob], 'clarity-act-message.'+ext, {type:S.blob.type||'video/webm'});
     } else if(S.compositeDownloadUrl){
       const src=S.compositeDownloadUrl.replace('?download=1','');
-      if(S.shareFile && S.shareFile._src===src) { updateShareDesc(); return; }
+      if(S.shareFile && S.shareFile._src===src) { S.compositePending=false; updateShareDesc(); return; }
       const r=await fetch(src);
       if(!r.ok) throw new Error('fetch failed');
       const b=await r.blob();
       S.shareFile=new File([b], 'clarity-voicemail.mp4', {type:'video/mp4'});
       S.shareFile._src=src;
+      S.compositePending=false;
     } else {
-      S.shareFile=null;  // audio with no composite: share sheet can't carry it to X reliably
+      S.shareFile=null;  // audio with no composite: the share menu can't carry it to X reliably
     }
-  }catch(e){ S.shareFile=null; }
+  }catch(e){ S.shareFile=null; if(S.compositeDownloadUrl) S.compositePending=false; }
   updateShareDesc();
 }
 function canNativeShare(){
@@ -895,11 +898,21 @@ function canNativeShare(){
 }
 function updateShareDesc(){
   if(canNativeShare()){
-    $('opt-social-desc').textContent='Opens your share sheet with the video attached — pick X and post';
+    $('opt-social-desc').textContent='Opens your share menu with the video attached — pick X and post';
   }
 }
 function postToX(e){
-  if(!canNativeShare()) return true;  // let the anchor open the intent link
+  if(!canNativeShare()){
+    // on a share-capable device, don't dump voice users into the link flow
+    // while their voicemail video is still processing or downloading
+    if(typeof navigator.share==='function' && S.compositePending){
+      e.preventDefault();
+      showToast('Your voicemail video is almost ready — try again in a few seconds.');
+      prepareShareFile();
+      return false;
+    }
+    return true;  // let the anchor open the intent link
+  }
   e.preventDefault();
   const text=buildPostText();
   // clipboard first — the X app sometimes drops prefilled text when a file is attached
@@ -937,6 +950,7 @@ async function uploadToSWC(blob, meta){
     prepSendLinks();
     if(meta.mode==='audio'){
       // voice notes get the answering-machine treatment
+      S.compositePending=true;
       status.textContent='Saved — building your answering-machine video…';
       try{
         const res = await fetch('/api/composite', {
@@ -953,6 +967,7 @@ async function uploadToSWC(blob, meta){
         status.className='upload-status ok';
       }catch(e){
         console.error('composite failed', e);
+        S.compositePending=false;
         status.textContent='Saved for SWC — thank you. (Voicemail video is still processing; your post will link the audio.)';
         status.className='upload-status ok';
       }
