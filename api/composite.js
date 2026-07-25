@@ -14,7 +14,7 @@ const GAP = 0.3;          // beat between tone and message
 const OUTRO = 1.0;        // tail after message ends
 const MAIN_LEN = 5.922;   // full b-roll length
 const UNIT_LEN = 3.003;   // ping-pong loop unit length
-const MAX_MSG_SECONDS = 150;
+const MAX_MSG_SECONDS = 130; // keeps total under X's 2:20 free-tier video cap after intro/outro
 
 async function download(url, dest) {
   const r = await fetch(url);
