@@ -250,6 +250,14 @@
     border-radius:16px; padding:16px 20px; margin-top:18px; font-size:14.5px;
   }
 
+  #swc-cam .toast{
+    position:fixed; left:50%; bottom:28px; transform:translateX(-50%) translateY(20px);
+    background:var(--ink); color:#fff; font-size:14px; font-weight:700;
+    border-radius:1000px; padding:12px 22px; opacity:0; pointer-events:none;
+    transition:.25s; z-index:99; max-width:90vw; text-align:center;
+  }
+  #swc-cam .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+
   /* consent */
   #swc-cam .consent-row{
     display:flex; align-items:flex-start; gap:12px; margin-top:20px;
@@ -461,7 +469,7 @@
           <div class="ico">⬇️</div>
           <div><b>Download your recording</b><span id="opt-download-desc">Save it first — you'll attach it to your post in the next step</span></div>
         </a>
-        <a class="send-opt" id="opt-social" target="_blank" rel="noopener">
+        <a class="send-opt" id="opt-social" target="_blank" rel="noopener" onclick="return SWCC.postToX(event)">
           <div class="ico">𝕏</div>
           <div><b>Post to X and tag your senators</b><span id="opt-social-desc">Opens X with your message and their @handles pre-filled — attach your downloaded video, then post</span></div>
         </a>
@@ -478,6 +486,8 @@
       </div>
     </div>
   </section>
+
+  <div class="toast" id="toast"></div>
 
 </div>
 
@@ -570,7 +580,7 @@ const WHY_PROMPTS = [
 ];
 
 /* ---------------- state ---------------- */
-const S = { mode:null, blob:null, blobURL:null, mime:'', swcVideoUrl:null, compositeDownloadUrl:null, voiceEnabled:false };
+const S = { mode:null, blob:null, blobURL:null, mime:'', swcVideoUrl:null, compositeDownloadUrl:null, shareFile:null, voiceEnabled:false };
 let mediaStream=null, recorder=null, chunks=[], recStart=0, timerInt=null;
 let tpAnim=null, tpY=0, tpLast=0;
 
@@ -836,16 +846,71 @@ function prepSendLinks(){
     $('opt-download-desc').textContent="Save it first — you'll attach it to your post in the next step";
   }
 
-  const tags = sens.map(s => s.twitter ? '@'+s.twitter : 'Sen. '+s.name).join(' ');
-  let text =
-`I just recorded a message for ${tags}: pass the CLARITY Act. Clear rules protect consumers and keep crypto jobs in America. 🇺🇸 @StandWithCrypto #CLARITYAct`;
-  if(S.swcVideoUrl){
-    text += `\n\nWatch my message: ${S.swcVideoUrl}`;
-    $('opt-social-desc').textContent = 'Opens X with your message, their @handles, and your video link already in the post — just hit post';
-  } else {
-    $('opt-social-desc').textContent = 'Opens X with your message and their @handles pre-filled — attach your downloaded video, then post';
-  }
+  // desktop fallback: intent link (+ watch link so the video travels even without a manual attach)
+  let text = buildPostText();
+  if(S.swcVideoUrl) text += `\n\nWatch my message: ${S.swcVideoUrl}`;
   $('opt-social').href=`https://x.com/intent/post?text=${encodeURIComponent(text)}`;
+  $('opt-social-desc').textContent = S.swcVideoUrl
+    ? 'Opens X with your message, their @handles, and your video link already in the post — just hit post'
+    : 'Opens X with your message and their @handles pre-filled — attach your downloaded video, then post';
+
+  prepareShareFile();  // async; upgrades the button to a native share sheet when possible
+}
+
+/* ---------------- Post to X (Web Share API, mobile-first) ---------------- */
+function buildPostText(){
+  const st=$('sen-state').value;
+  const sens=SENATORS[st]||[];
+  const tags = sens.map(s => s.twitter ? '@'+s.twitter : 'Sen. '+s.name).join(' and ');
+  const stateName = STATES[st] || 'my state';
+  return `Hey ${tags} — I'm one of thousands of constituents in ${stateName} who want clear rules of the road for crypto. Vote YES on CLARITY.\n\n@standwithcrypto #StandWithClarity`;
+}
+function showToast(msg){
+  const t=$('toast');
+  t.textContent=msg; t.classList.add('show');
+  clearTimeout(t._hide);
+  t._hide=setTimeout(()=>t.classList.remove('show'), 4000);
+}
+async function prepareShareFile(){
+  try{
+    if(S.mode==='video' && S.blob){
+      const ext=(S.mime||'').includes('mp4')?'mp4':'webm';
+      S.shareFile = new File([S.blob], 'clarity-act-message.'+ext, {type:S.blob.type||'video/webm'});
+    } else if(S.compositeDownloadUrl){
+      const src=S.compositeDownloadUrl.replace('?download=1','');
+      if(S.shareFile && S.shareFile._src===src) { updateShareDesc(); return; }
+      const r=await fetch(src);
+      if(!r.ok) throw new Error('fetch failed');
+      const b=await r.blob();
+      S.shareFile=new File([b], 'clarity-voicemail.mp4', {type:'video/mp4'});
+      S.shareFile._src=src;
+    } else {
+      S.shareFile=null;  // audio with no composite: share sheet can't carry it to X reliably
+    }
+  }catch(e){ S.shareFile=null; }
+  updateShareDesc();
+}
+function canNativeShare(){
+  return !!(S.shareFile && navigator.canShare && navigator.canShare({files:[S.shareFile]}));
+}
+function updateShareDesc(){
+  if(canNativeShare()){
+    $('opt-social-desc').textContent='Opens your share sheet with the video attached — pick X and post';
+  }
+}
+function postToX(e){
+  if(!canNativeShare()) return true;  // let the anchor open the intent link
+  e.preventDefault();
+  const text=buildPostText();
+  // clipboard first — the X app sometimes drops prefilled text when a file is attached
+  const copied = navigator.clipboard && navigator.clipboard.writeText
+    ? navigator.clipboard.writeText(text).then(()=>true).catch(()=>false)
+    : Promise.resolve(false);
+  copied.then(ok=>{ if(ok) showToast("Message copied — paste it if X doesn't prefill."); });
+  navigator.share({files:[S.shareFile], text}).catch(err=>{
+    if(err && err.name!=='AbortError') window.open($('opt-social').href, '_blank');
+  });
+  return false;
 }
 function finish(){
   $('done-banner').style.display='block';
@@ -919,7 +984,7 @@ function approveAndContinue(){
 
 return {go, buildScript, updateMeter, pickMode, startRecorderStep, initCapture,
         leaveRecorder, leaveRecorderBack, toggleRecord, showSenators, renderSenators,
-        approveAndContinue, skipScript, backFromMode, proceedToDelivery, finish};
+        approveAndContinue, skipScript, backFromMode, proceedToDelivery, postToX, finish};
 })();
 </script>
 <!-- BUILDER-EMBED-END -->
