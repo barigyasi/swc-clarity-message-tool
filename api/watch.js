@@ -135,7 +135,7 @@ module.exports = async (request, response) => {
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>${title} — Stand With Crypto</title>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
@@ -163,7 +163,7 @@ module.exports = async (request, response) => {
 <script defer src="/_vercel/insights/script.js"></script>
 <style>
   @import url('https://api.fontshare.com/v2/css?f[]=satoshi@500,700,900&display=swap');
-  body{margin:0;min-height:100vh;display:flex;flex-direction:column;background:#fff;color:#020817;font-family:'Satoshi',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;}
+  body{margin:0;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;overflow-x:hidden;background:#fff;color:#020817;font-family:'Satoshi',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;}
   .banner{background:#6c11ff;color:#fff;text-align:center;padding:12px 20px;font-weight:700;font-size:15px;}
   .wrap{max-width:720px;width:100%;box-sizing:border-box;flex:1;margin:0 auto;padding:28px 24px 60px;}
   .brand{display:flex;align-items:center;gap:12px;font-weight:900;font-size:18px;margin-bottom:28px;}
@@ -195,6 +195,51 @@ module.exports = async (request, response) => {
   .swc-footer-links a:hover{text-decoration:underline;text-underline-offset:3px;}
   .swc-footer-bottom{grid-column:1/-1;border-top:1px solid #e2e9f3;padding-top:18px;color:#64748b;font-size:12.5px;}
   @media(max-width:720px){.swc-footer-inner{grid-template-columns:1fr;padding:28px 24px}.swc-footer-links{justify-content:flex-start}.swc-footer-bottom{grid-column:auto}}
+
+  /* Mobile watch-page polish */
+  a.cta,.vm-stage,video{-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
+  a.cta:focus-visible,.vm-stage:focus-visible,video:focus-visible{outline:3px solid #e2d0ff;outline-offset:3px;}
+  @media(max-width:600px){
+    .banner{
+      padding:10px max(16px, env(safe-area-inset-right)) 10px max(16px, env(safe-area-inset-left));
+      font-size:13px; line-height:1.35;
+    }
+    .wrap{
+      padding:20px max(16px, env(safe-area-inset-right)) calc(42px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+    }
+    .brand{gap:10px; font-size:16.5px; margin-bottom:20px;}
+    .brand svg{width:27px; height:27px;}
+    h1{font-size:24px; line-height:1.16; letter-spacing:-.35px; margin-bottom:8px;}
+    p.sub{font-size:14.5px; line-height:1.5; margin-bottom:18px;}
+    video{max-height:66svh; border-radius:16px;}
+    .vm-stage{border-radius:16px;}
+    .vm-btn{width:64px; height:64px; font-size:25px;}
+    .vm-overlay{gap:10px; padding:16px;}
+    .vm-overlay span{font-size:13.5px; line-height:1.4;}
+    .vm-badge{left:10px; top:10px; padding:6px 9px; font-size:9.5px;}
+    .audio-fallback{padding:20px 16px; border-radius:16px;}
+    a.cta{
+      display:flex; width:100%; min-height:52px; box-sizing:border-box;
+      align-items:center; justify-content:center; margin-top:20px; padding:13px 18px;
+      border-radius:1000px; text-align:center; font-size:15px;
+    }
+    .swc-footer-inner{
+      padding:26px max(18px, env(safe-area-inset-right)) calc(26px + env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left));
+      gap:18px;
+    }
+    .swc-footer-links{gap:10px 20px;}
+  }
+  @media(max-width:360px){
+    .wrap{padding-left:max(12px, env(safe-area-inset-left));padding-right:max(12px, env(safe-area-inset-right));}
+    h1{font-size:22px;}
+  }
+  @media(max-width:900px) and (orientation:landscape){
+    video{max-height:72svh;}
+    .wrap{padding-top:16px;}
+  }
+  @media(prefers-reduced-motion:reduce){
+    *{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important;}
+  }
 </style>
 </head>
 <body>

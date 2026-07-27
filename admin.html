@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>SWC — Consented Submissions</title>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
@@ -14,7 +14,7 @@
 <style>
   @import url('https://api.fontshare.com/v2/css?f[]=satoshi@500,700,900&display=swap');
   body{
-    margin:0; background:#f9fafc; color:#020817;
+    margin:0; min-height:100vh; min-height:100dvh; background:#f9fafc; color:#020817;
     font-family:'Satoshi',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
   }
   .wrap{max-width:1000px; margin:0 auto; padding:40px 24px 80px;}
@@ -50,6 +50,25 @@
   .set-status{font-size:12.5px; color:#64748b; margin-top:10px; min-height:16px;}
   .set-status.ok{color:#00bb5a;}
   .set-status.err{color:#ff2247;}
+  button,input,.toggle-row{-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
+  button:focus-visible,input:focus-visible{outline:3px solid #e2d0ff;outline-offset:2px;}
+  @media(max-width:600px){
+    .wrap{
+      padding:24px max(14px, env(safe-area-inset-right)) calc(48px + env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+    }
+    .gate{margin:42px auto;}
+    h1{font-size:23px; line-height:1.2;}
+    p.sub{font-size:14px; line-height:1.5; margin-bottom:20px;}
+    .gate input{min-height:50px; padding:13px 14px; font-size:16px;}
+    .gate button{min-height:50px; font-size:15.5px;}
+    .settings{padding:18px 16px; margin-bottom:24px; border-radius:14px;}
+    .toggle-row{gap:11px;}
+    .toggle-row input{width:22px; height:22px; margin-top:0; flex-shrink:0;}
+    .toggle-row span{font-size:13.5px;}
+    .grid{grid-template-columns:1fr; gap:12px; margin-top:16px;}
+    .card{padding:14px; border-radius:14px;}
+    .card video,.card audio{border-radius:9px;}
+  }
 </style>
 </head>
 <body>

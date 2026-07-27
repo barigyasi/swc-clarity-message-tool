@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Stand With Crypto — Message Your Senator on the CLARITY Act</title>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
@@ -20,7 +20,7 @@
 <style>
   /* ===== standalone shell (NOT part of the Builder embed — the live site provides nav/banner) ===== */
   @import url('https://api.fontshare.com/v2/css?f[]=satoshi@500,700,900&display=swap');
-  body{margin:0; background:#fff; min-height:100vh; display:flex; flex-direction:column;}
+  body{margin:0; background:#fff; min-height:100vh; min-height:100dvh; display:flex; flex-direction:column; overflow-x:hidden;}
   .swc-banner{
     background:#6c11ff; color:#fff; text-align:center; padding:12px 20px;
     font-family:'Satoshi',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
@@ -343,6 +343,199 @@
   #swc-cam .upload-status{font-size:12.5px; color:var(--muted); margin-top:10px; min-height:16px;}
   #swc-cam .upload-status.ok{color:var(--good);}
   #swc-cam .upload-status.err{color:var(--bad);}
+
+  /* ============ mobile usability and responsive polish ============ */
+  #swc-cam .btn,
+  #swc-cam .chip,
+  #swc-cam .mode,
+  #swc-cam .send-opt,
+  #swc-cam .consent-row{
+    -webkit-tap-highlight-color:transparent;
+    touch-action:manipulation;
+  }
+  #swc-cam .btn:focus-visible,
+  #swc-cam .chip:focus-visible,
+  #swc-cam .mode:focus-visible,
+  #swc-cam .send-opt:focus-visible,
+  #swc-cam input:focus-visible,
+  #swc-cam select:focus-visible,
+  #swc-cam textarea:focus-visible{
+    outline:3px solid var(--primary-light);
+    outline-offset:2px;
+  }
+  #swc-cam .rec-controls .spacer{flex:1;}
+
+  @media(max-width:720px){
+    .swc-banner{
+      padding:10px max(16px, env(safe-area-inset-right)) 10px max(16px, env(safe-area-inset-left));
+      font-size:13px; line-height:1.35;
+    }
+    .swc-nav{
+      padding:15px max(16px, env(safe-area-inset-right)) 15px max(16px, env(safe-area-inset-left));
+    }
+    .swc-nav .brand{font-size:16.5px; gap:10px;}
+    .swc-shield{width:28px; height:28px;}
+    .swc-footer-inner{
+      padding:26px max(18px, env(safe-area-inset-right)) calc(26px + env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left));
+      gap:18px;
+    }
+    .swc-footer-links{gap:10px 20px;}
+  }
+
+  @media(max-width:560px){
+    #swc-cam{
+      padding:0 max(14px, env(safe-area-inset-right)) calc(48px + env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+    }
+
+    /* Compact, readable progress indicator that fits 320px-wide phones. */
+    #swc-cam .progress{gap:6px; margin:8px 0 16px;}
+    #swc-cam .progress .seg{
+      min-width:0; padding-top:7px; border-top-width:3px;
+      font-size:0; line-height:1.2; white-space:nowrap;
+    }
+    #swc-cam .progress .seg::after{font-size:11.5px; letter-spacing:-.1px;}
+    #swc-cam #p1::after{content:'1  Build';}
+    #swc-cam #p2::after{content:'2  Record';}
+    #swc-cam #p3::after{content:'3  Review';}
+    #swc-cam #p4::after{content:'4  Share';}
+
+    #swc-cam .card{
+      border-radius:18px; padding:22px 16px 20px; margin-bottom:12px;
+    }
+    #swc-cam h1{font-size:29px; line-height:1.12; letter-spacing:-.45px; margin-bottom:12px;}
+    #swc-cam h2{font-size:22px; line-height:1.2; margin-bottom:7px;}
+    #swc-cam .sub{font-size:15px; line-height:1.55; margin-bottom:18px;}
+    #swc-cam .hero-kicker{font-size:11.5px; letter-spacing:1.05px; padding:6px 12px; margin-bottom:12px;}
+    #swc-cam .hero-stats{
+      display:grid; grid-template-columns:repeat(3,minmax(0,1fr));
+      gap:7px; margin:20px 0 4px;
+    }
+    #swc-cam .hero-stats div{
+      min-width:0; padding:10px 6px; border-radius:12px; background:var(--wash);
+      text-align:center; font-size:11.5px; line-height:1.35;
+    }
+    #swc-cam .hero-stats b{font-size:19px; line-height:1.1; margin-bottom:3px;}
+
+    /* 16px prevents iOS Safari from zooming the page when a field receives focus. */
+    #swc-cam input[type=text], #swc-cam select, #swc-cam textarea{
+      min-height:50px; padding:13px 14px; border-radius:12px; font-size:16px;
+    }
+    #swc-cam textarea{min-height:118px; line-height:1.5;}
+    #swc-cam label{font-size:14px; margin:16px 0 6px;}
+    #swc-cam .row{gap:0;}
+    #swc-cam .chips{gap:7px;}
+    #swc-cam .chip{
+      display:inline-flex; align-items:center; min-height:42px;
+      padding:8px 13px; font-size:13px; line-height:1.25;
+    }
+    #swc-cam .skip-callout{align-items:stretch; flex-direction:column; padding:14px; gap:10px;}
+    #swc-cam .skip-callout .btn{width:100%; min-height:46px;}
+
+    #swc-cam .btn{min-height:50px; padding:13px 22px; font-size:15.5px;}
+    #swc-cam .btn.big{min-height:54px; padding:16px 20px;}
+    #swc-cam .btnrow{
+      flex-direction:column-reverse; align-items:stretch; gap:10px; margin-top:22px;
+    }
+    #swc-cam .btnrow .spacer{display:none;}
+    #swc-cam .btnrow .btn{width:100%;}
+
+    #swc-cam .script-box{border-radius:14px;}
+    #swc-cam .script-box textarea{min-height:180px; font-size:16px; line-height:1.6;}
+    #swc-cam .meter{gap:7px; font-size:11.5px;}
+
+    /* Delivery choices become compact, thumb-friendly rows instead of tall tiles. */
+    #swc-cam .modes{grid-template-columns:1fr; gap:10px;}
+    #swc-cam .mode{
+      display:grid; grid-template-columns:48px minmax(0,1fr); grid-template-rows:auto auto;
+      column-gap:13px; row-gap:2px; min-height:0; padding:16px; text-align:left; border-radius:16px;
+    }
+    #swc-cam .mode .ico{grid-row:1/3; align-self:center; font-size:32px; margin:0; text-align:center;}
+    #swc-cam .mode b{font-size:16px; margin:0;}
+    #swc-cam .mode span{font-size:13px; line-height:1.4;}
+
+    /* Keep the record control in reach and keep the camera from consuming the full viewport. */
+    #swc-cam .stage{
+      height:clamp(360px,52svh,520px); max-height:none; aspect-ratio:auto;
+      border-radius:16px; margin-top:12px;
+    }
+    #swc-cam .stage.vm{height:auto; aspect-ratio:16/9; max-height:none;}
+    #swc-cam .teleprompter{height:52%;}
+    #swc-cam .tp-inner{padding:26px 7% 0; font-size:17px; line-height:1.55;}
+    #swc-cam .rec-indicator{top:10px; left:10px; padding:6px 11px; font-size:12.5px;}
+    #swc-cam .countdown{font-size:80px;}
+    #swc-cam .rec-controls{
+      position:sticky; bottom:max(10px, env(safe-area-inset-bottom)); z-index:12;
+      display:grid; grid-template-columns:1fr; gap:9px;
+      margin:12px -4px 0; padding:10px;
+      border:1px solid var(--line); border-radius:16px;
+      background:rgba(255,255,255,.96); box-shadow:0 10px 30px rgba(2,8,23,.13);
+      -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px);
+    }
+    #swc-cam .rec-controls .spacer{display:none;}
+    #swc-cam #btn-rec{width:100%; min-height:54px;}
+    #swc-cam .speed{width:100%; justify-content:space-between; padding:0 4px; font-size:12.5px;}
+    #swc-cam .speed input{flex:1; min-width:0; height:32px;}
+    #swc-cam #step-record .btnrow{margin-top:12px;}
+
+    #swc-cam .playback{border-radius:16px; margin-top:12px;}
+    #swc-cam video.playback{height:auto; aspect-ratio:auto; max-height:58svh; object-fit:contain;}
+    #swc-cam .vm-overlay .vm-btn{width:64px; height:64px; font-size:25px;}
+    #swc-cam .vm-overlay span{font-size:13px;}
+
+    #swc-cam .senators{gap:10px;}
+    #swc-cam .sen{padding:16px; border-radius:16px; gap:12px;}
+    #swc-cam .sen .avatar{width:44px; height:44px;}
+
+    #swc-cam .send-opts{gap:10px;}
+    #swc-cam .send-opt{
+      min-height:76px; align-items:flex-start; gap:12px; padding:15px 14px; border-radius:16px;
+    }
+    #swc-cam .send-opt .ico{font-size:24px; line-height:1.25; flex-shrink:0;}
+    #swc-cam .send-opt b{font-size:15px; line-height:1.35;}
+    #swc-cam .send-opt span{font-size:12.5px; line-height:1.42;}
+    #swc-cam .step-num{width:24px; height:24px; font-size:12px;}
+
+    #swc-cam .consent-row{gap:11px; padding:14px; border-radius:13px;}
+    #swc-cam .consent-row input{width:22px; height:22px; margin-top:0;}
+    #swc-cam .consent-row span{font-size:13px; line-height:1.5;}
+    #swc-cam .upload-status{font-size:12px; line-height:1.45;}
+
+    /* Bottom-sheet pledge is easier to read and dismiss on a phone. */
+    #swc-cam .modal-overlay{align-items:flex-end; padding:0;}
+    #swc-cam .modal{
+      max-width:none; max-height:92dvh; padding:24px 18px calc(18px + env(safe-area-inset-bottom));
+      border-radius:24px 24px 0 0; overscroll-behavior:contain;
+    }
+    #swc-cam .modal h3{font-size:21px;}
+    #swc-cam .modal p{font-size:14px; line-height:1.58;}
+
+    #swc-cam .toast{
+      bottom:calc(14px + env(safe-area-inset-bottom)); width:calc(100% - 28px); max-width:420px;
+      border-radius:14px; padding:12px 16px; font-size:13px;
+    }
+  }
+
+  @media(max-width:360px){
+    #swc-cam{padding-left:max(10px, env(safe-area-inset-left)); padding-right:max(10px, env(safe-area-inset-right));}
+    #swc-cam .card{padding-left:14px; padding-right:14px;}
+    #swc-cam h1{font-size:27px;}
+    #swc-cam .progress .seg::after{font-size:10.5px;}
+    #swc-cam .hero-stats{gap:5px;}
+    #swc-cam .hero-stats div{padding:9px 4px; font-size:10.5px;}
+  }
+
+  @media(max-width:900px) and (orientation:landscape){
+    #swc-cam .stage{height:60svh; min-height:250px; max-height:430px;}
+    #swc-cam .stage.vm{height:auto; min-height:0; max-height:none;}
+    #swc-cam .modal{max-height:96dvh;}
+  }
+
+  @media(prefers-reduced-motion:reduce){
+    #swc-cam *, #swc-cam *::before, #swc-cam *::after{
+      animation-duration:.01ms !important; animation-iteration-count:1 !important;
+      transition-duration:.01ms !important; scroll-behavior:auto !important;
+    }
+  }
 </style>
 
 <div id="swc-cam">
