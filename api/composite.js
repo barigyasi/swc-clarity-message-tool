@@ -1,76 +1,128 @@
-const { put } = require('@vercel/blob');
+const { put, head } = require('@vercel/blob');
 const ffmpegPath = require('ffmpeg-static');
 const { execFile } = require('child_process');
 const { promisify } = require('util');
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
 const run = promisify(execFile);
+const SHARE_ID_RE = /^[A-Za-z0-9_-]{16,48}$/;
 
-// timing constants measured from the source b-roll (see repo assets/)
-const INTRO_END = 4.07;   // phrase + tone
-const GAP = 0.3;          // beat between tone and message
-const OUTRO = 1.0;        // tail after message ends
-const MAIN_LEN = 5.922;   // full b-roll length
-const UNIT_LEN = 3.003;   // ping-pong loop unit length
-const MAX_MSG_SECONDS = 130; // keeps total under X's 2:20 free-tier video cap after intro/outro
+// Timing constants measured from the source b-roll (see repo assets/).
+const INTRO_END = 4.07;
+const GAP = 0.3;
+const OUTRO = 1.0;
+const MAIN_LEN = 5.922;
+const UNIT_LEN = 3.003;
+const MAX_TOTAL_SECONDS = 60;
+const MAX_MSG_SECONDS = MAX_TOTAL_SECONDS - INTRO_END - GAP - OUTRO;
 
 async function download(url, dest) {
-  const r = await fetch(url);
-  if (!r.ok) throw new Error('fetch failed: ' + r.status);
-  fs.writeFileSync(dest, Buffer.from(await r.arrayBuffer()));
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`fetch failed: ${response.status}`);
+  fs.writeFileSync(dest, Buffer.from(await response.arrayBuffer()));
 }
 
 async function ffmpegDuration(file) {
-  // ffmpeg exits 1 when no output is given; the Duration line is on stderr either way
-  try { await run(ffmpegPath, ['-i', file]); } catch (e) {
-    const m = /Duration:\s*(\d+):(\d+):(\d+\.\d+)/.exec(e.stderr || '');
-    if (m) return (+m[1]) * 3600 + (+m[2]) * 60 + (+m[3]);
+  // ffmpeg exits 1 when no output is given; the Duration line is on stderr either way.
+  try {
+    await run(ffmpegPath, ['-i', file]);
+  } catch (error) {
+    const match = /Duration:\s*(\d+):(\d+):(\d+\.\d+)/.exec(error.stderr || '');
+    if (match) return (+match[1]) * 3600 + (+match[2]) * 60 + (+match[3]);
   }
   throw new Error('could not read duration');
 }
 
-module.exports = async (request, response) => {
-  if (request.method !== 'POST') return response.status(405).json({ error: 'POST only' });
-  const audioUrl = String((request.body && request.body.audioUrl) || '');
+function getBaseUrl(request) {
+  const forwardedHost = request.headers['x-forwarded-host'];
+  const rawHost = Array.isArray(forwardedHost)
+    ? forwardedHost[0]
+    : (forwardedHost || request.headers.host || '');
+  const host = String(rawHost).split(',')[0].trim();
 
-  let u;
-  try { u = new URL(audioUrl); } catch (e) { return response.status(400).json({ error: 'bad url' }); }
-  if (u.protocol !== 'https:' ||
-      !u.hostname.endsWith('.public.blob.vercel-storage.com') ||
-      !u.pathname.startsWith('/submissions/') ||
-      !/\.(webm|m4a|mp4|ogg)$/i.test(u.pathname)) {
+  const forwardedProto = request.headers['x-forwarded-proto'];
+  const rawProto = Array.isArray(forwardedProto) ? forwardedProto[0] : forwardedProto;
+  const proto = String(rawProto || 'https').split(',')[0].trim() === 'http' ? 'http' : 'https';
+
+  if (!host) throw new Error('missing host');
+  return `${proto}://${host}`;
+}
+
+module.exports = async (request, response) => {
+  if (request.method !== 'POST') {
+    response.setHeader('Allow', 'POST');
+    return response.status(405).json({ error: 'POST only' });
+  }
+
+  const body = request.body && typeof request.body === 'object' ? request.body : {};
+  const audioUrl = String(body.audioUrl || '');
+  const suppliedShareId = String(body.shareId || '');
+  const shareId = SHARE_ID_RE.test(suppliedShareId)
+    ? suppliedShareId
+    : crypto.randomBytes(12).toString('base64url');
+
+  let url;
+  try {
+    url = new URL(audioUrl);
+  } catch {
+    return response.status(400).json({ error: 'bad url' });
+  }
+
+  if (
+    url.protocol !== 'https:' ||
+    !url.hostname.endsWith('.public.blob.vercel-storage.com') ||
+    !url.pathname.startsWith('/submissions/') ||
+    !/\.(webm|m4a|mp4|ogg)$/i.test(url.pathname)
+  ) {
+    return response.status(400).json({ error: 'bad url' });
+  }
+
+  try {
+    // Verifies that the source audio belongs to this project's connected Blob store.
+    const source = await head(audioUrl);
+    if (!source.pathname.startsWith('submissions/')) {
+      return response.status(400).json({ error: 'bad url' });
+    }
+  } catch {
     return response.status(400).json({ error: 'bad url' });
   }
 
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'swc-'));
-  const f = (n) => path.join(tmp, n);
+  const file = (name) => path.join(tmp, name);
 
   try {
-    // fetch the recorded message and the b-roll assets (served statically by this deployment)
-    const assetBase = 'https://' + (request.headers['x-forwarded-host'] || request.headers.host) + '/assets/';
+    const assetBase = `${getBaseUrl(request)}/assets/`;
     await Promise.all([
-      download(audioUrl, f('msg-in')),
-      download(assetBase + 'main.mp4', f('main.mp4')),
-      download(assetBase + 'unit.mp4', f('unit.mp4')),
-      download(assetBase + 'intro.m4a', f('intro.m4a')),
+      download(audioUrl, file('msg-in')),
+      download(assetBase + 'main.mp4', file('main.mp4')),
+      download(assetBase + 'unit.mp4', file('unit.mp4')),
+      download(assetBase + 'intro.m4a', file('intro.m4a')),
     ]);
 
-    // normalize to wav first — MediaRecorder webm often lacks a duration header
-    await run(ffmpegPath, ['-y', '-i', f('msg-in'), '-ac', '2', '-ar', '48000', f('msg.wav')]);
-    const msgDur = await ffmpegDuration(f('msg.wav'));
-    if (msgDur > MAX_MSG_SECONDS) return response.status(400).json({ error: 'message too long' });
+    // Normalize to WAV first. MediaRecorder WebM often lacks a duration header.
+    await run(ffmpegPath, [
+      '-y', '-i', file('msg-in'), '-ac', '2', '-ar', '48000', file('msg.wav'),
+    ]);
+
+    const msgDur = await ffmpegDuration(file('msg.wav'));
+    if (msgDur > MAX_MSG_SECONDS + 0.25) {
+      return response.status(400).json({
+        error: `message too long; maximum is ${Math.floor(MAX_MSG_SECONDS)} seconds`,
+      });
+    }
 
     const total = (INTRO_END + GAP + msgDur + OUTRO).toFixed(3);
     const plays = Math.max(1, Math.ceil((total - MAIN_LEN) / UNIT_LEN));
 
     await run(ffmpegPath, [
       '-y',
-      '-i', f('main.mp4'),
-      '-stream_loop', String(plays - 1), '-i', f('unit.mp4'),
-      '-i', f('intro.m4a'),
-      '-i', f('msg.wav'),
+      '-i', file('main.mp4'),
+      '-stream_loop', String(plays - 1), '-i', file('unit.mp4'),
+      '-i', file('intro.m4a'),
+      '-i', file('msg.wav'),
       '-f', 'lavfi', '-t', String(GAP), '-i', 'anullsrc=r=48000:cl=stereo',
       '-filter_complex',
       `[0:v][1:v]concat=n=2:v=1:a=0,trim=0:${total},setpts=PTS-STARTPTS[vout];` +
@@ -81,27 +133,50 @@ module.exports = async (request, response) => {
       '-map', '[vout]', '-map', '[aout]',
       '-c:v', 'libx264', '-crf', '21', '-preset', 'veryfast',
       '-c:a', 'aac', '-b:a', '128k', '-movflags', '+faststart',
-      f('out.mp4'),
+      file('out.mp4'),
     ], { maxBuffer: 32 * 1024 * 1024 });
 
     const stamp = Date.now();
-    const blob = await put(`submissions/composite-${stamp}.mp4`, fs.readFileSync(f('out.mp4')), {
+    const blob = await put(
+      `submissions/composite-${stamp}.mp4`,
+      fs.readFileSync(file('out.mp4')),
+      {
+        access: 'public',
+        contentType: 'video/mp4',
+        addRandomSuffix: true,
+        cacheControlMaxAge: 31536000,
+      },
+    );
+
+    const shareRecord = {
+      shareId,
+      mode: 'video',
+      mediaUrl: blob.url,
+      createdAt: new Date().toISOString(),
+      source: 'voice-composite',
+    };
+
+    await put(`shares/${shareId}.json`, JSON.stringify(shareRecord), {
       access: 'public',
-      contentType: 'video/mp4',
-      addRandomSuffix: true,
+      contentType: 'application/json',
+      addRandomSuffix: false,
+      cacheControlMaxAge: 31536000,
     });
 
-    const host = 'https://' + (request.headers['x-forwarded-host'] || request.headers.host);
+    const host = getBaseUrl(request);
     return response.status(200).json({
+      shareId,
       compositeUrl: blob.url,
-      downloadUrl: blob.downloadUrl || blob.url + '?download=1',
-      watchUrl: host + '/api/watch?m=video&v=' + encodeURIComponent(blob.url),
+      downloadUrl: blob.downloadUrl || `${blob.url}?download=1`,
+      watchUrl: `${host}/watch/${shareId}`,
       duration: Number(total),
     });
-  } catch (e) {
-    console.error('composite failed', e);
+  } catch (error) {
+    console.error('composite failed', error);
     return response.status(500).json({ error: 'composite failed' });
   } finally {
-    try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {}
+    try {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    } catch {}
   }
 };

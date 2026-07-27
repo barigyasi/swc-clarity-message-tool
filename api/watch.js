@@ -1,42 +1,145 @@
-module.exports = (request, response) => {
-  const v = String(request.query.v || '');
-  const mode = request.query.m === 'audio' ? 'audio' : 'video';
+const { head } = require('@vercel/blob');
 
-  let u;
-  try { u = new URL(v); } catch (e) { return response.status(400).send('Bad request'); }
-  // only serve media from our own blob store
-  if (u.protocol !== 'https:' ||
-      !u.hostname.endsWith('.public.blob.vercel-storage.com') ||
-      !u.pathname.startsWith('/submissions/')) {
-    return response.status(400).send('Bad request');
+const SHARE_ID_RE = /^[A-Za-z0-9_-]{16,48}$/;
+
+function escapeHtml(value) {
+  return String(value || '').replace(/[&<>"']/g, (char) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  })[char]);
+}
+
+function getBaseUrl(request) {
+  const forwardedHost = request.headers['x-forwarded-host'];
+  const rawHost = Array.isArray(forwardedHost)
+    ? forwardedHost[0]
+    : (forwardedHost || request.headers.host || '');
+  const host = String(rawHost).split(',')[0].trim();
+
+  const forwardedProto = request.headers['x-forwarded-proto'];
+  const rawProto = Array.isArray(forwardedProto) ? forwardedProto[0] : forwardedProto;
+  const proto = String(rawProto || 'https').split(',')[0].trim() === 'http' ? 'http' : 'https';
+
+  if (!host) throw new Error('missing host');
+  return `${proto}://${host}`;
+}
+
+function validateMediaUrl(value) {
+  let url;
+  try {
+    url = new URL(String(value || ''));
+  } catch {
+    throw new Error('Bad request');
   }
-  const src = u.href.replace(/"/g, '');
-  const isMp4 = /\.(mp4|m4a)$/i.test(u.pathname);
-  const mediaType = mode === 'video' ? (isMp4 ? 'video/mp4' : 'video/webm')
-                                     : (isMp4 ? 'audio/mp4' : 'audio/webm');
+
+  if (
+    url.protocol !== 'https:' ||
+    !url.hostname.endsWith('.public.blob.vercel-storage.com') ||
+    !url.pathname.startsWith('/submissions/')
+  ) {
+    throw new Error('Bad request');
+  }
+
+  return url;
+}
+
+async function loadShareRecord(shareId) {
+  const metadata = await head(`shares/${shareId}.json`);
+  const response = await fetch(metadata.url);
+  if (!response.ok) throw new Error('Share not found');
+
+  const record = await response.json();
+  const mode = record.mode === 'audio' ? 'audio' : 'video';
+  const mediaUrl = validateMediaUrl(record.mediaUrl);
+
+  return { mode, mediaUrl };
+}
+
+module.exports = async (request, response) => {
+  const shareId = String(request.query.id || '');
+  const legacyUrl = String(request.query.v || '');
+
+  let mode;
+  let mediaUrl;
+  let canonical;
+
+  try {
+    if (shareId) {
+      if (!SHARE_ID_RE.test(shareId)) {
+        return response.status(400).send('Bad request');
+      }
+
+      const record = await loadShareRecord(shareId);
+      mode = record.mode;
+      mediaUrl = record.mediaUrl;
+      canonical = `${getBaseUrl(request)}/watch/${shareId}`;
+    } else if (legacyUrl) {
+      // Backward compatibility for links that were posted before clean share URLs.
+      mode = request.query.m === 'audio' ? 'audio' : 'video';
+      mediaUrl = validateMediaUrl(legacyUrl);
+
+      // Confirms that the legacy URL belongs to the Blob store connected to this project.
+      const legacyBlob = await head(mediaUrl.href);
+      if (!legacyBlob.pathname.startsWith('submissions/')) {
+        return response.status(400).send('Bad request');
+      }
+
+      canonical = `${getBaseUrl(request)}/api/watch?m=${encodeURIComponent(mode)}&v=${encodeURIComponent(mediaUrl.href)}`;
+    } else {
+      return response.status(400).send('Bad request');
+    }
+  } catch (error) {
+    response.setHeader('Cache-Control', 'public, max-age=60');
+    return response.status(404).send('This message could not be found.');
+  }
+
+  const src = escapeHtml(mediaUrl.href);
+  const isMp4 = /\.(mp4|m4a)$/i.test(mediaUrl.pathname);
+  const mediaType = mode === 'video'
+    ? (isMp4 ? 'video/mp4' : 'video/webm')
+    : (isMp4 ? 'audio/mp4' : 'audio/webm');
+
   const title = 'A constituent message on the CLARITY Act';
   const desc = 'A Stand With Crypto advocate recorded this message urging their senators to pass the CLARITY Act.';
-
   const player = mode === 'video'
-    ? `<video controls playsinline src="${src}"></video>`
-    : `<div class="audio-wrap"><div class="mic">🎙️</div><audio controls src="${src}"></audio></div>`;
+    ? `<video id="message-media" controls playsinline preload="metadata" src="${src}"></video>`
+    : `<div class="audio-wrap"><div class="mic">🎙️</div><audio id="message-media" controls preload="metadata" src="${src}"></audio></div>`;
 
   response.setHeader('Content-Type', 'text/html; charset=utf-8');
-  response.status(200).send(`<!DOCTYPE html>
+  response.setHeader('X-Content-Type-Options', 'nosniff');
+  response.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  response.setHeader('Cache-Control', 'public, max-age=300');
+  response.setHeader(
+    'Vercel-CDN-Cache-Control',
+    'public, max-age=86400, stale-while-revalidate=604800',
+  );
+
+  return response.status(200).send(`<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>${title} — Stand With Crypto</title>
+<link rel="canonical" href="${escapeHtml(canonical)}">
 <meta property="og:title" content="${title}">
 <meta property="og:description" content="${desc}">
 <meta property="og:type" content="video.other">
+<meta property="og:url" content="${escapeHtml(canonical)}">
 <meta property="og:video" content="${src}">
 <meta property="og:video:secure_url" content="${src}">
 <meta property="og:video:type" content="${mediaType}">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="${title}">
 <meta name="twitter:description" content="${desc}">
+<script>
+  window.va = window.va || function () {
+    (window.vaq = window.vaq || []).push(arguments);
+  };
+</script>
+<script defer src="/_vercel/insights/script.js"></script>
 <style>
   @import url('https://api.fontshare.com/v2/css?f[]=satoshi@500,700,900&display=swap');
   body{margin:0;background:#fff;color:#020817;font-family:'Satoshi',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;}
@@ -72,6 +175,26 @@ module.exports = (request, response) => {
   ${player}
   <a class="cta" href="/">Record your own message →</a>
 </div>
+<script>
+(function () {
+  var media = document.getElementById('message-media');
+  var played = false;
+  if (media) {
+    media.addEventListener('play', function () {
+      if (played) return;
+      played = true;
+      window.va('event', { name: 'Watch Playback Started', data: { mode: '${mode}' } });
+    });
+  }
+
+  var cta = document.querySelector('.cta');
+  if (cta) {
+    cta.addEventListener('click', function () {
+      window.va('event', { name: 'Watch CTA Clicked', data: { mode: '${mode}' } });
+    });
+  }
+})();
+</script>
 </body>
 </html>`);
 };

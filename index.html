@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Stand With Crypto — Message Your Senator on the CLARITY Act</title>
+<script>
+  window.va = window.va || function () {
+    (window.vaq = window.vaq || []).push(arguments);
+  };
+</script>
+<script defer src="/_vercel/insights/script.js"></script>
 <style>
   /* ===== standalone shell (NOT part of the Builder embed — the live site provides nav/banner) ===== */
   @import url('https://api.fontshare.com/v2/css?f[]=satoshi@500,700,900&display=swap');
@@ -483,7 +489,7 @@
       <div class="btnrow">
         <button class="btn danger" onclick="SWCC.startRecorderStep()">↺ Re-record</button>
         <div class="spacer"></div>
-        <button class="btn" onclick="SWCC.approveAndContinue()">Approve & Continue →</button>
+        <button class="btn" id="btn-approve" onclick="SWCC.approveAndContinue()">Approve & Continue →</button>
       </div>
     </div>
   </section>
@@ -664,12 +670,22 @@ const WHY_PROMPTS = [
 ];
 
 /* ---------------- state ---------------- */
-const S = { mode:null, blob:null, blobURL:null, mime:'', swcVideoUrl:null, compositeDownloadUrl:null, shareFile:null, compositePending:false, pledgeAccepted:false, voiceEnabled:false };
+const S = { mode:null, blob:null, blobURL:null, mime:'', swcVideoUrl:null, compositeDownloadUrl:null, shareFile:null, shareId:null, compositePending:false, pledgeAccepted:false, voiceEnabled:false };
+const MAX_VIDEO_SECONDS = 60;
+const MAX_AUDIO_SECONDS = 54; // leaves room for the answering-machine intro/outro so the final MP4 stays under 60s
 let mediaStream=null, recorder=null, chunks=[], recStart=0, timerInt=null;
 let whySelected=[], whyListRendered='';
 let tpAnim=null, tpY=0, tpLast=0;
 
 const $ = id => document.getElementById(id);
+function trackEvent(name, data){
+  if(typeof window.va === 'function') window.va('event', {name, data:data||{}});
+}
+function makeShareId(){
+  const bytes = new Uint8Array(12);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, b=>b.toString(16).padStart(2,'0')).join('');
+}
 
 /* ---------------- init ---------------- */
 function init(){
@@ -882,16 +898,26 @@ function beginRecording(){
     ? ['video/mp4','video/webm;codecs=vp9','video/webm']
     : ['audio/mp4','audio/webm;codecs=opus','audio/webm'];
   S.mime = prefs.find(m=>window.MediaRecorder && MediaRecorder.isTypeSupported(m)) || '';
-  recorder = new MediaRecorder(mediaStream, S.mime ? {mimeType:S.mime} : undefined);
+  const recorderOptions = S.mime ? {mimeType:S.mime} : {};
+  if(S.mode==='video'){
+    recorderOptions.videoBitsPerSecond = 2500000;
+    recorderOptions.audioBitsPerSecond = 128000;
+  } else {
+    recorderOptions.audioBitsPerSecond = 128000;
+  }
+  recorder = new MediaRecorder(mediaStream, recorderOptions);
   recorder.ondataavailable = e=>{ if(e.data.size) chunks.push(e.data); };
   recorder.onstop = ()=>{
+    const recordedSeconds = Math.max(1, Math.round((Date.now()-recStart)/1000));
     S.blob = new Blob(chunks, {type: S.mime || (S.mode==='video'?'video/webm':'audio/webm')});
     if(S.blobURL) URL.revokeObjectURL(S.blobURL);
     S.blobURL = URL.createObjectURL(S.blob);
+    trackEvent('Recording Completed', {mode:S.mode||'unknown', seconds:recordedSeconds});
     showReview();
   };
   recorder.start();
   recStart=Date.now();
+  trackEvent('Recording Started', {mode:S.mode||'unknown', state:$('f-state').value||'unknown'});
   $('rec-ind').style.display='flex';
   $('stage').classList.add('recording');
   $('btn-rec').disabled=false;
@@ -899,9 +925,14 @@ function beginRecording(){
   $('btn-rec').style.background='var(--bad)';
   timerInt=setInterval(()=>{
     const s=Math.floor((Date.now()-recStart)/1000);
+    const maxSeconds = S.mode==='audio' ? MAX_AUDIO_SECONDS : MAX_VIDEO_SECONDS;
     const el=$('rec-timer');
     el.textContent=`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
-    el.style.color = s>45?'var(--bad)': s>35?'var(--warn)':'#fff';
+    el.style.color = s>maxSeconds-10?'var(--bad)': s>maxSeconds-20?'var(--warn)':'#fff';
+    if(s>=maxSeconds){
+      stopRecording();
+      showToast(`Recording stopped at ${maxSeconds} seconds.`);
+    }
   },250);
   startTeleprompter();
 }
@@ -1037,10 +1068,8 @@ function prepSendLinks(){
     dl.href=S.blobURL||'#'; dl.download=fname;
   }
 
-  // intent link fallback (+ watch link so the video travels even without a manual attach)
-  let text = buildPostText();
-  if(S.swcVideoUrl) text += `\n\nWatch my message: ${S.swcVideoUrl}`;
-  $('opt-social').href=`https://x.com/intent/post?text=${encodeURIComponent(text)}`;
+  // Intent-link fallback. The short watch URL travels with the post even without a manual attachment.
+  $('opt-social').href=`https://x.com/intent/post?text=${encodeURIComponent(buildSharePostText())}`;
 
   layoutShareOptions();
   prepareShareFile();  // async; upgrades the button to a native share flow when possible
@@ -1081,7 +1110,7 @@ function layoutShareOptions(){
 }
 async function copyPostText(){
   try{
-    await navigator.clipboard.writeText(buildPostText());
+    await navigator.clipboard.writeText(buildSharePostText());
     showToast('Post text copied — paste it into your post.');
   }catch(e){
     showToast("Couldn't copy automatically — select and copy the text from your script instead.");
@@ -1095,6 +1124,11 @@ function buildPostText(){
   const tags = sens.map(s => s.twitter ? '@'+s.twitter : 'Sen. '+s.name).join(' and ');
   const stateName = STATES[st] || 'my state';
   return `Hey ${tags} — I'm one of thousands of constituents in ${stateName} who want clear rules of the road for crypto. Vote YES on CLARITY.\n\n@standwithcrypto #StandWithClarity`;
+}
+function buildSharePostText(){
+  let text = buildPostText();
+  if(S.swcVideoUrl) text += `\n\nWatch my message: ${S.swcVideoUrl}`;
+  return text;
 }
 function showToast(msg){
   const t=$('toast');
@@ -1127,6 +1161,7 @@ function canNativeShare(){
 }
 function updateShareDesc(){ layoutShareOptions(); }
 function postToX(e){
+  trackEvent('X Share Opened', {mode:S.mode||'unknown', state:$('sen-state').value||'unknown'});
   if(!canNativeShare()){
     // on a share-capable device, don't dump voice users into the link flow
     // while their voicemail video is still processing or downloading
@@ -1139,7 +1174,7 @@ function postToX(e){
     return true;  // let the anchor open the intent link
   }
   e.preventDefault();
-  const text=buildPostText();
+  const text=buildSharePostText();
   // clipboard first — the X app sometimes drops prefilled text when a file is attached
   const copied = navigator.clipboard && navigator.clipboard.writeText
     ? navigator.clipboard.writeText(text).then(()=>true).catch(()=>false)
@@ -1151,14 +1186,32 @@ function postToX(e){
   return false;
 }
 function finish(){
+  trackEvent('Share Confirmed', {mode:S.mode||'unknown', state:$('sen-state').value||'unknown'});
   $('done-banner').style.display='block';
   window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'});
 }
 
 /* ---------------- consent + SWC storage ---------------- */
+async function registerShare(shareId, mediaUrl, mode){
+  const response = await fetch('/api/share', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({shareId, mediaUrl, mode}),
+  });
+  if(!response.ok){
+    const body = await response.json().catch(()=>({}));
+    throw new Error(body.error || 'share registration failed');
+  }
+  return response.json();
+}
+
 async function uploadToSWC(blob, meta){
   const status=$('upload-status');
   status.textContent='Saving a copy for SWC…'; status.className='upload-status';
+  const shareId = makeShareId();
+  S.shareId = shareId;
+  const uploadMeta = {...meta, shareId};
+
   try{
     const mod = await import('https://esm.sh/@vercel/blob@2.6.1/client');
     const isVideo = meta.mode==='video';
@@ -1169,57 +1222,77 @@ async function uploadToSWC(blob, meta){
       access:'public',
       handleUploadUrl:'/api/blob-upload',
       contentType: blob.type || (isVideo?'video/webm':'audio/webm'),
-      clientPayload: JSON.stringify(meta),
+      clientPayload: JSON.stringify(uploadMeta),
+      multipart: blob.size > 10 * 1024 * 1024,
     });
-    S.swcVideoUrl = location.origin + '/api/watch?m=' + encodeURIComponent(meta.mode) + '&v=' + encodeURIComponent(result.url);
-    prepSendLinks();
+
     if(meta.mode==='audio'){
-      // voice notes get the answering-machine treatment
       S.compositePending=true;
       status.textContent='Saved — building your answering-machine video…';
       try{
         const res = await fetch('/api/composite', {
           method:'POST',
           headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({audioUrl: result.url}),
+          body: JSON.stringify({audioUrl: result.url, shareId}),
         });
         if(!res.ok) throw new Error('composite failed');
         const c = await res.json();
         S.swcVideoUrl = c.watchUrl;
         S.compositeDownloadUrl = c.downloadUrl;
+        S.compositePending=false;
         prepSendLinks();
         status.textContent='Saved — your voicemail video is ready and linked in your X post.';
         status.className='upload-status ok';
       }catch(e){
         console.error('composite failed', e);
         S.compositePending=false;
-        status.textContent='Saved for SWC — thank you. (Voicemail video is still processing; your post will link the audio.)';
+        const share = await registerShare(shareId, result.url, 'audio');
+        S.swcVideoUrl = share.watchUrl;
+        prepSendLinks();
+        status.textContent='Saved for SWC — thank you. The shared link will play your audio message.';
         status.className='upload-status ok';
       }
     } else {
-      status.textContent='Saved for SWC — thank you.'; status.className='upload-status ok';
+      const share = await registerShare(shareId, result.url, 'video');
+      S.swcVideoUrl = share.watchUrl;
+      prepSendLinks();
+      status.textContent='Saved for SWC — thank you.';
+      status.className='upload-status ok';
     }
+
+    trackEvent('Submission Uploaded', {mode:meta.mode||'unknown', state:meta.state||'unknown'});
+    return true;
   }catch(e){
     console.error('SWC upload failed', e);
+    S.compositePending=false;
     status.textContent="Couldn't save a copy for SWC, but your message still works below.";
     status.className='upload-status err';
+    return false;
   }
 }
-function approveAndContinue(){
+
+async function approveAndContinue(){
   const consent = $('consent-checkbox').checked;
-  if(consent && S.blob){
-    uploadToSWC(S.blob, {
-      name: $('f-name').value.trim(),
-      occupation: $('f-occupation').value.trim(),
-      city: $('f-city').value.trim(),
-      state: $('f-state').value,
-      why: $('f-why').value.trim(),
-      script: $('script-text').value,
-      mode: S.mode,
-      consent: true,
-    });
+  const button = $('btn-approve');
+  if(button) button.disabled=true;
+
+  try{
+    if(consent && S.blob){
+      await uploadToSWC(S.blob, {
+        name: $('f-name').value.trim(),
+        occupation: $('f-occupation').value.trim(),
+        city: $('f-city').value.trim(),
+        state: $('f-state').value,
+        why: $('f-why').value.trim(),
+        script: $('script-text').value,
+        mode: S.mode,
+        consent: true,
+      });
+    }
+    showSenators();
+  } finally {
+    if(button) button.disabled=false;
   }
-  showSenators();
 }
 
 return {go, buildScript, updateMeter, pickMode, startRecorderStep, initCapture,

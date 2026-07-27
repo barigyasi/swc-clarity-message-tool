@@ -1,8 +1,15 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
   "functions": {
     "api/composite.js": {
-      "maxDuration": 60,
+      "maxDuration": 180,
       "memory": 2048
     }
-  }
+  },
+  "rewrites": [
+    {
+      "source": "/watch/:id",
+      "destination": "/api/watch?id=:id"
+    }
+  ]
 }
