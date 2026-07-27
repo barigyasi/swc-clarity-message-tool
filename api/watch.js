@@ -123,6 +123,13 @@ module.exports = async (request, response) => {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>${title} — Stand With Crypto</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="shortcut icon" href="/favicon.ico">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="manifest" href="/site.webmanifest">
+<meta name="theme-color" content="#6c11ff">
 <link rel="canonical" href="${escapeHtml(canonical)}">
 <meta property="og:title" content="${title}">
 <meta property="og:description" content="${desc}">
@@ -142,9 +149,9 @@ module.exports = async (request, response) => {
 <script defer src="/_vercel/insights/script.js"></script>
 <style>
   @import url('https://api.fontshare.com/v2/css?f[]=satoshi@500,700,900&display=swap');
-  body{margin:0;background:#fff;color:#020817;font-family:'Satoshi',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;}
+  body{margin:0;min-height:100vh;display:flex;flex-direction:column;background:#fff;color:#020817;font-family:'Satoshi',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;}
   .banner{background:#6c11ff;color:#fff;text-align:center;padding:12px 20px;font-weight:700;font-size:15px;}
-  .wrap{max-width:720px;margin:0 auto;padding:28px 24px 60px;}
+  .wrap{max-width:720px;width:100%;box-sizing:border-box;flex:1;margin:0 auto;padding:28px 24px 60px;}
   .brand{display:flex;align-items:center;gap:12px;font-weight:900;font-size:18px;margin-bottom:28px;}
   h1{font-size:26px;letter-spacing:-.4px;margin:0 0 8px;}
   p.sub{color:#64748b;font-size:15px;margin:0 0 22px;}
@@ -154,6 +161,16 @@ module.exports = async (request, response) => {
   .audio-wrap audio{width:100%;}
   a.cta{display:inline-flex;margin-top:26px;background:#6c11ff;color:#fff;text-decoration:none;border-radius:1000px;padding:15px 32px;font-weight:700;font-size:15.5px;}
   a.cta:hover{background:#923dfe;}
+  .swc-footer{margin-top:auto;border-top:1px solid #e2e9f3;background:#f9fafc;}
+  .swc-footer-inner{max-width:1376px;margin:0 auto;padding:32px 24px;display:grid;grid-template-columns:minmax(220px,1fr) auto;gap:20px 40px;align-items:center;}
+  .swc-footer-brand{display:flex;align-items:center;gap:11px;color:#020817;text-decoration:none;font-size:18px;font-weight:900;width:max-content;}
+  .swc-footer-brand img{width:30px;height:30px;display:block;}
+  .swc-footer-copy{color:#64748b;font-size:13.5px;line-height:1.55;margin:8px 0 0;max-width:590px;}
+  .swc-footer-links{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:10px 24px;}
+  .swc-footer-links a{color:#020817;text-decoration:none;font-size:13.5px;font-weight:700;}
+  .swc-footer-links a:hover{text-decoration:underline;text-underline-offset:3px;}
+  .swc-footer-bottom{grid-column:1/-1;border-top:1px solid #e2e9f3;padding-top:18px;color:#64748b;font-size:12.5px;}
+  @media(max-width:720px){.swc-footer-inner{grid-template-columns:1fr;padding:28px 24px}.swc-footer-links{justify-content:flex-start}.swc-footer-bottom{grid-column:auto}}
 </style>
 </head>
 <body>
@@ -175,6 +192,23 @@ module.exports = async (request, response) => {
   ${player}
   <a class="cta" href="/">Record your own message →</a>
 </div>
+
+<footer class="swc-footer" aria-label="Stand With Crypto footer">
+  <div class="swc-footer-inner">
+    <div>
+      <a class="swc-footer-brand" href="https://www.standwithcrypto.org/" target="_blank" rel="noopener noreferrer">
+        <img src="/shield.svg" alt="" aria-hidden="true">
+        <span>Stand With Crypto</span>
+      </a>
+      <p class="swc-footer-copy">Stand With Crypto is a nonprofit advocating for clear, common-sense crypto regulations.</p>
+    </div>
+    <nav class="swc-footer-links" aria-label="Legal links">
+      <a href="https://www.standwithcrypto.org/terms-of-service" target="_blank" rel="noopener noreferrer">Terms &amp; Conditions</a>
+      <a href="https://www.standwithcrypto.org/privacy" target="_blank" rel="noopener noreferrer">Privacy Policy</a>
+    </nav>
+    <div class="swc-footer-bottom">Stand With Crypto © All rights reserved 2026</div>
+  </div>
+</footer>
 <script>
 (function () {
   var media = document.getElementById('message-media');

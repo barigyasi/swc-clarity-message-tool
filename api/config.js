@@ -1,7 +1,7 @@
 const { put, list } = require('@vercel/blob');
 
 const CONFIG_PATH = 'config/settings.json';
-const DEFAULTS = { voiceNotesEnabled: false };
+const DEFAULTS = { voiceNotesEnabled: true };
 
 async function readConfig() {
   const { blobs } = await list({ prefix: CONFIG_PATH });

@@ -4,6 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Stand With Crypto — Message Your Senator on the CLARITY Act</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="shortcut icon" href="/favicon.ico">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="manifest" href="/site.webmanifest">
+<meta name="theme-color" content="#6c11ff">
 <script>
   window.va = window.va || function () {
     (window.vaq = window.vaq || []).push(arguments);
@@ -13,7 +20,7 @@
 <style>
   /* ===== standalone shell (NOT part of the Builder embed — the live site provides nav/banner) ===== */
   @import url('https://api.fontshare.com/v2/css?f[]=satoshi@500,700,900&display=swap');
-  body{margin:0; background:#fff;}
+  body{margin:0; background:#fff; min-height:100vh; display:flex; flex-direction:column;}
   .swc-banner{
     background:#6c11ff; color:#fff; text-align:center; padding:12px 20px;
     font-family:'Satoshi',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
@@ -26,6 +33,27 @@
   }
   .swc-nav .brand{display:flex; align-items:center; gap:12px; font-weight:900; font-size:18px; color:#020817;}
   .swc-shield{width:32px; height:32px; flex-shrink:0;}
+  .swc-footer{
+    margin-top:auto; border-top:1px solid #e2e9f3; background:#f9fafc;
+    font-family:'Satoshi',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  }
+  .swc-footer-inner{
+    max-width:1376px; margin:0 auto; padding:34px 24px;
+    display:grid; grid-template-columns:minmax(220px,1fr) auto; gap:22px 40px;
+    align-items:center;
+  }
+  .swc-footer-brand{display:flex; align-items:center; gap:11px; color:#020817; text-decoration:none; font-size:18px; font-weight:900; width:max-content;}
+  .swc-footer-brand img{width:30px; height:30px; display:block;}
+  .swc-footer-copy{color:#64748b; font-size:13.5px; line-height:1.55; margin:8px 0 0; max-width:590px;}
+  .swc-footer-links{display:flex; align-items:center; justify-content:flex-end; flex-wrap:wrap; gap:10px 24px;}
+  .swc-footer-links a{color:#020817; text-decoration:none; font-size:13.5px; font-weight:700;}
+  .swc-footer-links a:hover{text-decoration:underline; text-underline-offset:3px;}
+  .swc-footer-bottom{grid-column:1/-1; border-top:1px solid #e2e9f3; padding-top:18px; color:#64748b; font-size:12.5px;}
+  @media(max-width:720px){
+    .swc-footer-inner{grid-template-columns:1fr; padding:28px 24px;}
+    .swc-footer-links{justify-content:flex-start;}
+    .swc-footer-bottom{grid-column:auto;}
+  }
 </style>
 </head>
 <body>
@@ -59,7 +87,7 @@
     --dark-blue:#006eff; --light-blue:#d7e8ff; --light-red:#ffd3d4; --light-green:#c6f7d1;
     font-family:satoshiFont,'Satoshi',-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,sans-serif;
     color:var(--ink); line-height:1.55; -webkit-font-smoothing:antialiased;
-    max-width:760px; margin:0 auto; padding:0 24px 80px;
+    max-width:760px; width:100%; flex:1; margin:0 auto; padding:0 24px 80px;
   }
   #swc-cam *{box-sizing:border-box; margin:0; padding:0;}
 
@@ -84,6 +112,8 @@
   #swc-cam h1{font-size:34px; line-height:1.15; margin-bottom:14px; letter-spacing:-.5px; font-weight:900;}
   #swc-cam h2{font-size:23px; margin-bottom:6px; letter-spacing:-.3px; font-weight:700;}
   #swc-cam .sub{color:var(--muted); font-size:15.5px; margin-bottom:20px;}
+  #swc-cam .sub a, #swc-cam .modal a{color:var(--primary); font-weight:700; text-decoration:underline; text-underline-offset:3px;}
+  #swc-cam .sub a:hover, #swc-cam .modal a:hover{color:var(--primary-hover);}
   #swc-cam .hero-kicker{
     display:inline-block; color:var(--primary); font-weight:700; font-size:12.5px;
     letter-spacing:1.4px; text-transform:uppercase; margin-bottom:14px;
@@ -345,7 +375,7 @@
   <section class="step" id="step-form">
     <div class="card">
       <h2>Tell us a little about yourself</h2>
-      <p class="sub">We'll turn this into a short, personal script. Your custom script will scroll, teleprompter style, during your recording to ensure confidence and clarity. Nothing is stored here without your consent.</p>
+      <p class="sub">We'll turn this into a short, personal script. Your custom script will scroll, teleprompter style, during your recording to ensure confidence and clarity. You understand that Stand With Crypto and its vendors may collect and use your Personal Information. To learn more, visit the <a href="https://www.standwithcrypto.org/privacy" target="_blank" rel="noopener noreferrer">Stand With Crypto Privacy Policy</a> and <a href="https://www.standwithcrypto.org/terms-of-service" target="_blank" rel="noopener noreferrer">Terms &amp; Conditions</a>.</p>
 
       <div class="skip-callout">
         <span>Already know what you want to tell your senators?</span>
@@ -551,10 +581,10 @@
     <div class="modal">
       <h3>Keep Your Passion Productive</h3>
       <p>You're about to address your U.S. senators — as a constituent, as a member of the crypto community, and most importantly, as a citizen and a voter.</p>
-      <p>Sharing your voice with Congress is a time-honored tradition of American democracy. Don't be intimidated — be yourself. They work for you, after all. Be polite and respectful. Avoid profanity, harsh tones and politically charged rhetoric. A clear, courteous message is the kind that gets taken seriously.</p>
+      <p>Sharing your voice with Congress is a time-honored tradition of American democracy. Don't be intimidated — be yourself. They work for you, after all. Be polite and respectful. Avoid profanity, harsh tones and politically charged rhetoric. A clear, courteous message is the kind that gets taken seriously. By clicking “I understand and agree” below, I agree to SWC’s Terms &amp; Conditions, available <a href="https://www.standwithcrypto.org/terms-of-service" target="_blank" rel="noopener noreferrer">here</a>.</p>
       <label class="consent-row">
         <input type="checkbox" id="pledge-check" onchange="SWCC.pledgeToggle()">
-        <span>I understand</span>
+        <span>I understand and Agree</span>
       </label>
       <div class="btnrow">
         <button class="btn ghost" onclick="SWCC.pledgeClose()">← Not yet</button>
@@ -671,7 +701,7 @@ const WHY_PROMPTS = [
 ];
 
 /* ---------------- state ---------------- */
-const S = { mode:null, blob:null, blobURL:null, mime:'', swcVideoUrl:null, compositeDownloadUrl:null, shareFile:null, shareId:null, compositePending:false, pledgeAccepted:false, voiceEnabled:false };
+const S = { mode:null, blob:null, blobURL:null, mime:'', swcVideoUrl:null, compositeDownloadUrl:null, shareFile:null, shareId:null, compositePending:false, pledgeAccepted:false, voiceEnabled:true };
 const MAX_VIDEO_SECONDS = 60;
 const MAX_AUDIO_SECONDS = 54; // leaves room for the answering-machine intro/outro so the final MP4 stays under 60s
 let mediaStream=null, recorder=null, chunks=[], recStart=0, timerInt=null;
@@ -727,7 +757,7 @@ function init(){
 async function loadConfig(){
   try{
     const r = await fetch('/api/config', {cache:'no-store'});
-    if(r.ok){ const c = await r.json(); S.voiceEnabled = !!c.voiceNotesEnabled; }
+    if(r.ok){ const c = await r.json(); S.voiceEnabled = c.voiceNotesEnabled !== false; }
   }catch(e){ /* non-Vercel host (local file / embed preview): keep default */ }
   applyConfig();
   try{
@@ -1330,6 +1360,23 @@ return {go, buildScript, updateMeter, pickMode, startRecorderStep, initCapture,
 })();
 </script>
 <!-- BUILDER-EMBED-END -->
+
+<footer class="swc-footer" aria-label="Stand With Crypto footer">
+  <div class="swc-footer-inner">
+    <div>
+      <a class="swc-footer-brand" href="https://www.standwithcrypto.org/" target="_blank" rel="noopener noreferrer">
+        <img src="/shield.svg" alt="" aria-hidden="true">
+        <span>Stand With Crypto</span>
+      </a>
+      <p class="swc-footer-copy">Stand With Crypto is a nonprofit advocating for clear, common-sense crypto regulations.</p>
+    </div>
+    <nav class="swc-footer-links" aria-label="Legal links">
+      <a href="https://www.standwithcrypto.org/terms-of-service" target="_blank" rel="noopener noreferrer">Terms &amp; Conditions</a>
+      <a href="https://www.standwithcrypto.org/privacy" target="_blank" rel="noopener noreferrer">Privacy Policy</a>
+    </nav>
+    <div class="swc-footer-bottom">Stand With Crypto © All rights reserved 2026</div>
+  </div>
+</footer>
 
 </body>
 </html>
