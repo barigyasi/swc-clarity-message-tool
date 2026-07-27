@@ -84,6 +84,36 @@
 }
 </style>
 
+<style id="mobile-horizontal-gutter-fix">
+@media (max-width:560px){
+  #swc-cam{
+    padding-left:max(18px, env(safe-area-inset-left));
+    padding-right:max(18px, env(safe-area-inset-right));
+  }
+  #swc-cam .card{
+    padding-left:18px;
+    padding-right:18px;
+  }
+  #swc-cam h1,
+  #swc-cam h2,
+  #swc-cam .sub,
+  #swc-cam p,
+  #swc-cam span{
+    overflow-wrap:anywhere;
+  }
+}
+@media (max-width:360px){
+  #swc-cam{
+    padding-left:max(14px, env(safe-area-inset-left));
+    padding-right:max(14px, env(safe-area-inset-right));
+  }
+  #swc-cam .card{
+    padding-left:16px;
+    padding-right:16px;
+  }
+}
+</style>
+
 </head>
 <body>
 
