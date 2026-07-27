@@ -106,7 +106,20 @@ module.exports = async (request, response) => {
   const desc = 'A Stand With Crypto advocate recorded this message urging their senators to pass the CLARITY Act.';
   const player = mode === 'video'
     ? `<video id="message-media" controls playsinline preload="metadata" src="${src}"></video>`
-    : `<div class="audio-wrap"><div class="mic">🎙️</div><audio id="message-media" controls preload="metadata" src="${src}"></audio></div>`;
+    : `<div class="vm-stage" id="vm-stage" role="button" tabindex="0" aria-label="Play answering-machine message">
+        <video id="vm-video" muted playsinline preload="auto" src="/assets/main.mp4"></video>
+        <div class="vm-overlay" id="vm-overlay">
+          <div class="vm-btn" id="vm-btn">▶</div>
+          <span id="vm-label">Play the answering-machine message</span>
+        </div>
+        <div class="vm-badge">CONSTITUENT VOICEMAIL</div>
+      </div>
+      <audio id="message-media" preload="auto" src="${src}"></audio>
+      <audio id="vm-intro" preload="auto" src="/assets/intro.m4a"></audio>
+      <div class="audio-fallback" id="audio-fallback" hidden>
+        <p>Play the constituent's audio message:</p>
+        <audio id="fallback-media" controls preload="metadata" src="${src}"></audio>
+      </div>`;
 
   response.setHeader('Content-Type', 'text/html; charset=utf-8');
   response.setHeader('X-Content-Type-Options', 'nosniff');
@@ -156,9 +169,19 @@ module.exports = async (request, response) => {
   h1{font-size:26px;letter-spacing:-.4px;margin:0 0 8px;}
   p.sub{color:#64748b;font-size:15px;margin:0 0 22px;}
   video{width:100%;max-height:75vh;object-fit:contain;border-radius:20px;background:#0b0d17;border:1px solid #e2e9f3;}
-  .audio-wrap{background:#f9fafc;border:1px solid #e2e9f3;border-radius:20px;padding:36px 24px;text-align:center;}
-  .audio-wrap .mic{font-size:44px;margin-bottom:16px;}
-  .audio-wrap audio{width:100%;}
+  .vm-stage{position:relative;width:100%;aspect-ratio:16/9;overflow:hidden;border-radius:20px;background:#0b0d17;border:1px solid #e2e9f3;cursor:pointer;outline:none;}
+  .vm-stage:focus-visible{box-shadow:0 0 0 4px #e2d0ff;border-color:#6c11ff;}
+  .vm-stage video{width:100%;height:100%;max-height:none;object-fit:cover;border:0;border-radius:0;background:#0b0d17;display:block;}
+  .vm-overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:rgba(2,8,23,.42);z-index:3;color:#fff;text-align:center;padding:20px;}
+  .vm-overlay.loading .vm-btn{animation:vmSpin 1s linear infinite;font-size:22px;}
+  .vm-btn{width:72px;height:72px;border-radius:50%;display:grid;place-items:center;background:#6c11ff;color:#fff;font-size:28px;box-shadow:0 10px 30px rgba(2,8,23,.32);}
+  .vm-overlay span{font-size:15px;font-weight:700;text-shadow:0 1px 7px rgba(0,0,0,.75);}
+  .vm-badge{position:absolute;left:14px;top:14px;z-index:2;padding:7px 11px;border-radius:1000px;background:rgba(2,8,23,.66);color:#fff;font-size:11px;font-weight:900;letter-spacing:.7px;}
+  #message-media,#vm-intro{display:none;}
+  .audio-fallback{background:#f9fafc;border:1px solid #e2e9f3;border-radius:20px;padding:26px 22px;}
+  .audio-fallback p{margin:0 0 12px;color:#64748b;font-size:14px;}
+  .audio-fallback audio{width:100%;}
+  @keyframes vmSpin{to{transform:rotate(360deg);}}
   a.cta{display:inline-flex;margin-top:26px;background:#6c11ff;color:#fff;text-decoration:none;border-radius:1000px;padding:15px 32px;font-weight:700;font-size:15.5px;}
   a.cta:hover{background:#923dfe;}
   .swc-footer{margin-top:auto;border-top:1px solid #e2e9f3;background:#f9fafc;}
@@ -211,20 +234,172 @@ module.exports = async (request, response) => {
 </footer>
 <script>
 (function () {
+  var mode = '${mode}';
   var media = document.getElementById('message-media');
   var played = false;
-  if (media) {
-    media.addEventListener('play', function () {
-      if (played) return;
-      played = true;
-      window.va('event', { name: 'Watch Playback Started', data: { mode: '${mode}' } });
-    });
+
+  function trackPlayback() {
+    if (played) return;
+    played = true;
+    window.va('event', { name: 'Watch Playback Started', data: { mode: mode } });
+  }
+
+  if (mode === 'video' && media) {
+    media.addEventListener('play', trackPlayback);
+  }
+
+  if (mode === 'audio') {
+    var stage = document.getElementById('vm-stage');
+    var video = document.getElementById('vm-video');
+    var intro = document.getElementById('vm-intro');
+    var overlay = document.getElementById('vm-overlay');
+    var button = document.getElementById('vm-btn');
+    var label = document.getElementById('vm-label');
+    var fallback = document.getElementById('audio-fallback');
+    var playing = false;
+    var audioContext = null;
+    var audioConnected = false;
+
+    function ready(element) {
+      if (element.readyState >= 3) return Promise.resolve();
+      return new Promise(function (resolve, reject) {
+        var timer = setTimeout(function () {
+          cleanup();
+          reject(new Error('media load timeout'));
+        }, 15000);
+        function cleanup() {
+          clearTimeout(timer);
+          element.removeEventListener('canplaythrough', onReady);
+          element.removeEventListener('error', onError);
+        }
+        function onReady() { cleanup(); resolve(); }
+        function onError() { cleanup(); reject(new Error('media failed to load')); }
+        element.addEventListener('canplaythrough', onReady, { once: true });
+        element.addEventListener('error', onError, { once: true });
+      });
+    }
+
+    function resetPlayer() {
+      playing = false;
+      try { video.pause(); } catch (error) {}
+      try { intro.pause(); intro.currentTime = 0; } catch (error) {}
+      try { media.pause(); media.currentTime = 0; } catch (error) {}
+      video.onended = null;
+      intro.onended = null;
+      media.onended = null;
+      video.loop = false;
+      video.src = '/assets/main.mp4';
+      video.load();
+      overlay.style.display = 'flex';
+      overlay.classList.remove('loading');
+      button.textContent = '▶';
+      label.textContent = 'Play the answering-machine message';
+    }
+
+    function showFallback(error) {
+      console.error('answering-machine playback failed', error);
+      playing = false;
+      stage.hidden = true;
+      fallback.hidden = false;
+    }
+
+    async function playAnsweringMachine() {
+      if (playing) {
+        resetPlayer();
+        return;
+      }
+
+      playing = true;
+      overlay.classList.add('loading');
+      button.textContent = '◌';
+      label.textContent = 'Loading the answering-machine message…';
+
+      try {
+        video.src = '/assets/main.mp4';
+        video.loop = false;
+        video.muted = true;
+        video.load();
+        intro.currentTime = 0;
+        media.currentTime = 0;
+        intro.load();
+        media.load();
+
+        if (!audioConnected && (window.AudioContext || window.webkitAudioContext)) {
+          audioContext = new (window.AudioContext || window.webkitAudioContext)();
+          await audioContext.resume();
+          var source = audioContext.createMediaElementSource(media);
+          var highpass = audioContext.createBiquadFilter();
+          var lowpass = audioContext.createBiquadFilter();
+          var compressor = audioContext.createDynamicsCompressor();
+          highpass.type = 'highpass';
+          highpass.frequency.value = 300;
+          lowpass.type = 'lowpass';
+          lowpass.frequency.value = 3400;
+          source.connect(highpass);
+          highpass.connect(lowpass);
+          lowpass.connect(compressor);
+          compressor.connect(audioContext.destination);
+          audioConnected = true;
+        }
+
+        await Promise.all([ready(video), ready(intro), ready(media)]);
+        if (!playing) return;
+
+        // Prime the constituent audio during the user's click so mobile browsers
+        // permit it to begin after the intro finishes.
+        media.muted = true;
+        await media.play();
+        media.pause();
+        media.currentTime = 0;
+        media.muted = false;
+
+        overlay.style.display = 'none';
+        overlay.classList.remove('loading');
+        trackPlayback();
+
+        video.onended = function () {
+          if (!playing) return;
+          video.src = '/assets/unit.mp4';
+          video.loop = true;
+          video.play().catch(showFallback);
+        };
+
+        intro.onended = function () {
+          setTimeout(function () {
+            if (playing) media.play().catch(showFallback);
+          }, 300);
+        };
+
+        media.onended = function () {
+          setTimeout(function () {
+            if (playing) resetPlayer();
+          }, 1000);
+        };
+
+        await Promise.all([video.play(), intro.play()]);
+      } catch (error) {
+        showFallback(error);
+      }
+    }
+
+    if (stage) {
+      stage.addEventListener('click', playAnsweringMachine);
+      stage.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          playAnsweringMachine();
+        }
+      });
+    }
+
+    var fallbackMedia = document.getElementById('fallback-media');
+    if (fallbackMedia) fallbackMedia.addEventListener('play', trackPlayback);
   }
 
   var cta = document.querySelector('.cta');
   if (cta) {
     cta.addEventListener('click', function () {
-      window.va('event', { name: 'Watch CTA Clicked', data: { mode: '${mode}' } });
+      window.va('event', { name: 'Watch CTA Clicked', data: { mode: mode } });
     });
   }
 })();
