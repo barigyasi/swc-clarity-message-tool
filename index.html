@@ -250,6 +250,21 @@
     border-radius:16px; padding:16px 20px; margin-top:18px; font-size:14.5px;
   }
 
+  /* pledge modal */
+  #swc-cam .modal-overlay{
+    position:fixed; inset:0; background:rgba(2,8,23,.55); z-index:50;
+    display:none; align-items:center; justify-content:center; padding:24px;
+  }
+  #swc-cam .modal-overlay.open{display:flex; animation:swcFade .2s ease;}
+  #swc-cam .modal{
+    background:#fff; border-radius:24px; padding:32px; max-width:480px; width:100%;
+    max-height:85vh; overflow-y:auto;
+  }
+  #swc-cam .modal h3{font-size:21px; font-weight:900; letter-spacing:-.3px; margin-bottom:12px;}
+  #swc-cam .modal p{font-size:14.5px; color:var(--muted); line-height:1.6; margin-bottom:10px;}
+  #swc-cam .modal .consent-row{margin-top:16px;}
+  #swc-cam .modal .btnrow{margin-top:20px;}
+
   #swc-cam .toast{
     position:fixed; left:50%; bottom:28px; transform:translateX(-50%) translateY(20px);
     background:var(--ink); color:#fff; font-size:14px; font-weight:700;
@@ -276,17 +291,18 @@
 <div id="swc-cam">
 
   <div class="progress">
-    <div class="seg" id="p1">1 · Build your script</div>
+    <div class="seg" id="p1">1 · Build</div>
     <div class="seg" id="p2">2 · Record</div>
-    <div class="seg" id="p3">3 · Send it</div>
+    <div class="seg" id="p3">3 · Review</div>
+    <div class="seg" id="p4">4 · Share it</div>
   </div>
 
   <!-- ============ LANDING ============ -->
   <section class="step active" id="step-landing">
     <div class="card">
       <div class="hero-kicker">The CLARITY Act · Senate Vote Ahead</div>
-      <h1>Put a face and a voice on crypto policy.</h1>
-      <p class="sub">Emails get skimmed. A 30-second message from a real constituent — in your own voice — gets watched. We'll help you write a short script, record a voice note or video, and get it in front of your senators. Takes about 3 minutes.</p>
+      <h1>Put a face and a voice to your CLARITY support.</h1>
+      <p class="sub">Senators hear from lobbyists and big institutions all the time, but the most impactful story they can hear is yours. A short message from the voice of a real constituent hits different. Record a quick video — or if you'd rather stay off camera, leave a voice note and we'll turn it into a retro answering-machine video for your senator. Takes about 3 minutes.</p>
       <div class="hero-stats">
         <div><b>~30 sec</b> message length</div>
         <div><b>2</b> senators reached</div>
@@ -453,7 +469,7 @@
       <div class="btnrow">
         <button class="btn ghost" onclick="SWCC.go('review')">← Back</button>
         <div class="spacer"></div>
-        <button class="btn" onclick="SWCC.go('send')">Send My Message →</button>
+        <button class="btn" onclick="SWCC.go('send')">Share My Message →</button>
       </div>
     </div>
   </section>
@@ -461,8 +477,8 @@
   <!-- ============ SEND ============ -->
   <section class="step" id="step-send">
     <div class="card">
-      <h2>Get it in front of them</h2>
-      <p class="sub" id="send-sub">Download your recording, then post to X. Tagging your senator publicly is often what gets a staffer's attention.</p>
+      <h2>Share it with your senators</h2>
+      <p class="sub" id="send-sub">Your message is ready for the public square. Post it to X and tag your senators — a public post from a real constituent gets seen by their staff in a way private messages never do. The more of us they hear, the harder we are to ignore.</p>
 
       <div class="send-opts">
         <a class="send-opt" id="opt-download">
@@ -482,10 +498,28 @@
       <div class="btnrow">
         <button class="btn ghost" onclick="SWCC.go('senators')">← Back</button>
         <div class="spacer"></div>
-        <button class="btn" onclick="SWCC.finish()">I Sent It ✓</button>
+        <button class="btn" onclick="SWCC.finish()">I Shared It ✓</button>
       </div>
     </div>
   </section>
+
+  <!-- ============ PLEDGE MODAL ============ -->
+  <div class="modal-overlay" id="pledge-modal">
+    <div class="modal">
+      <h3>Keep Your Passion Productive</h3>
+      <p>You're about to address your U.S. senators — as a constituent, as a member of the crypto community, and most importantly, as a citizen and a voter.</p>
+      <p>Sharing your voice with Congress is a time-honored tradition of American democracy. Don't be intimidated — be yourself. They work for you, after all. And be polite and respectful: a clear, courteous message is the kind that gets taken seriously.</p>
+      <label class="consent-row">
+        <input type="checkbox" id="pledge-check" onchange="SWCC.pledgeToggle()">
+        <span>I understand</span>
+      </label>
+      <div class="btnrow">
+        <button class="btn ghost" onclick="SWCC.pledgeClose()">← Not yet</button>
+        <div class="spacer"></div>
+        <button class="btn" id="pledge-continue" disabled onclick="SWCC.pledgeContinue()">Let's Do This →</button>
+      </div>
+    </div>
+  </div>
 
   <div class="toast" id="toast"></div>
 
@@ -580,7 +614,7 @@ const WHY_PROMPTS = [
 ];
 
 /* ---------------- state ---------------- */
-const S = { mode:null, blob:null, blobURL:null, mime:'', swcVideoUrl:null, compositeDownloadUrl:null, shareFile:null, compositePending:false, voiceEnabled:false };
+const S = { mode:null, blob:null, blobURL:null, mime:'', swcVideoUrl:null, compositeDownloadUrl:null, shareFile:null, compositePending:false, pledgeAccepted:false, voiceEnabled:false };
 let mediaStream=null, recorder=null, chunks=[], recStart=0, timerInt=null;
 let tpAnim=null, tpY=0, tpLast=0;
 
@@ -619,19 +653,19 @@ function applyConfig(){
   $('mode-audio').style.display = S.voiceEnabled ? '' : 'none';
   const landingSub = document.querySelector('#step-landing .sub');
   if(landingSub) landingSub.textContent = S.voiceEnabled
-    ? "Emails get skimmed. A 30-second message from a real constituent gets watched. Record a quick video — or if you'd rather stay off camera, leave a voice note and we'll turn it into a retro answering-machine video for your senator. Takes about 3 minutes."
-    : "Emails get skimmed. A 30-second message from a real constituent — face to camera — gets watched. We'll help you write a short script, record your video, and get it in front of your senators. Takes about 3 minutes.";
+    ? "Senators hear from lobbyists and big institutions all the time, but the most impactful story they can hear is yours. A short message from the voice of a real constituent hits different. Record a quick video — or if you'd rather stay off camera, leave a voice note and we'll turn it into a retro answering-machine video for your senator. Takes about 3 minutes."
+    : "Senators hear from lobbyists and big institutions all the time, but the most impactful story they can hear is yours. A short message from the voice of a real constituent hits different. We'll help you write a short script and record a quick video for your senators. Takes about 3 minutes.";
 }
 if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', init);
 else init();
 
 /* ---------------- navigation ---------------- */
-const PHASE = {landing:1,form:1,script:1,mode:2,record:2,review:2,senators:3,send:3};
+const PHASE = {landing:1,form:1,script:1,mode:2,record:2,review:3,senators:4,send:4};
 function go(step){
   document.querySelectorAll('#swc-cam .step').forEach(s=>s.classList.remove('active'));
   $('step-'+step).classList.add('active');
   const ph = PHASE[step]||1;
-  [1,2,3].forEach(i=>{
+  [1,2,3,4].forEach(i=>{
     const el=$('p'+i);
     el.classList.toggle('active', i===ph);
     el.classList.toggle('done', i<ph);
@@ -685,8 +719,17 @@ function pickMode(m){
 
 /* ---------------- skip / back nav ---------------- */
 function proceedToDelivery(){
+  if(!S.pledgeAccepted){ $('pledge-modal').classList.add('open'); return; }
   if(S.voiceEnabled){ go('mode'); }
   else { pickMode('video'); startRecorderStep(); }
+}
+function pledgeToggle(){ $('pledge-continue').disabled = !$('pledge-check').checked; }
+function pledgeClose(){ $('pledge-modal').classList.remove('open'); }
+function pledgeContinue(){
+  if(!$('pledge-check').checked) return;
+  S.pledgeAccepted=true;
+  pledgeClose();
+  proceedToDelivery();
 }
 function skipScript(){ proceedToDelivery(); }
 function backFromMode(){ go($('script-text').value.trim() ? 'script' : 'form'); }
@@ -999,7 +1042,8 @@ function approveAndContinue(){
 
 return {go, buildScript, updateMeter, pickMode, startRecorderStep, initCapture,
         leaveRecorder, leaveRecorderBack, toggleRecord, showSenators, renderSenators,
-        approveAndContinue, skipScript, backFromMode, proceedToDelivery, postToX, finish};
+        approveAndContinue, skipScript, backFromMode, proceedToDelivery, postToX,
+        pledgeToggle, pledgeClose, pledgeContinue, finish};
 })();
 </script>
 <!-- BUILDER-EMBED-END -->
