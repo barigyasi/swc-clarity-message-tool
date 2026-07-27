@@ -1224,7 +1224,7 @@ async function uploadToSWC(blob, meta){
     const ext = (S.mime||'').includes('mp4') ? (isVideo?'mp4':'m4a') : 'webm';
     const safeState = (meta.state||'na').replace(/[^a-zA-Z0-9-]/g,'');
     const pathname = `submissions/${Date.now()}-${safeState}-${meta.mode}.${ext}`;
-    const result = await mod.upload(pathname, blob, {
+    const result = await mod.uploadPresigned(pathname, blob, {
       access:'public',
       handleUploadUrl:'/api/blob-upload',
       contentType: blob.type || (isVideo?'video/webm':'audio/webm'),
