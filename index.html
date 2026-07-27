@@ -638,7 +638,18 @@ function init(){
   const wc = $('why-chips');
   WHY_PROMPTS.forEach(p=>{
     const c=document.createElement('div'); c.className='chip'; c.textContent='“…'+p+'”';
-    c.onclick=()=>{ $('f-why').value = p; $('f-why').focus(); };
+    c.onclick=()=>{
+      const ta=$('f-why');
+      const current=ta.value.trim();
+      if(!current){ ta.value=p; }
+      else if(current.split(/,\s*/).map(s=>s.trim().toLowerCase()).includes(p.toLowerCase())){
+        // already included — do nothing (avoid duplicate entries)
+      } else {
+        ta.value = current.replace(/[,.\s]+$/,'') + ', ' + p;
+      }
+      ta.focus();
+      ta.selectionStart = ta.selectionEnd = ta.value.length;
+    };
     wc.appendChild(c);
   });
   loadConfig();
