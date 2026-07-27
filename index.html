@@ -642,6 +642,7 @@ const WHY_PROMPTS = [
 /* ---------------- state ---------------- */
 const S = { mode:null, blob:null, blobURL:null, mime:'', swcVideoUrl:null, compositeDownloadUrl:null, shareFile:null, compositePending:false, pledgeAccepted:false, voiceEnabled:false };
 let mediaStream=null, recorder=null, chunks=[], recStart=0, timerInt=null;
+let whySelected=[], whyListRendered='';
 let tpAnim=null, tpY=0, tpLast=0;
 
 const $ = id => document.getElementById(id);
@@ -662,14 +663,17 @@ function init(){
   WHY_PROMPTS.forEach(p=>{
     const c=document.createElement('div'); c.className='chip'; c.textContent='“…'+p+'”';
     c.onclick=()=>{
+      if(whySelected.map(s=>s.toLowerCase()).includes(p.toLowerCase())) return; // already added — no-op
+      whySelected.push(p);
+      const newList = joinWithAnd(whySelected);
       const ta=$('f-why');
-      const current=ta.value.trim();
-      if(!current){ ta.value=p; }
-      else if(current.split(/,\s*/).map(s=>s.trim().toLowerCase()).includes(p.toLowerCase())){
-        // already included — do nothing (avoid duplicate entries)
+      if(whyListRendered && ta.value.includes(whyListRendered)){
+        ta.value = ta.value.replace(whyListRendered, newList);
       } else {
-        ta.value = current.replace(/[,.\s]+$/,'') + ', ' + p;
+        const current=ta.value.trim();
+        ta.value = current ? current.replace(/[,.\s]+$/,'') + ', ' + newList : newList;
       }
+      whyListRendered = newList;
       ta.focus();
       ta.selectionStart = ta.selectionEnd = ta.value.length;
     };
@@ -717,6 +721,11 @@ function go(step){
 
 /* ---------------- script generation ---------------- */
 function aOrAn(w){ return /^[aeiou]/i.test(w.trim()) ? 'an' : 'a'; }
+function joinWithAnd(list){
+  if(list.length<=1) return list[0]||'';
+  if(list.length===2) return list[0]+' and '+list[1];
+  return list.slice(0,-1).join(', ')+', and '+list[list.length-1];
+}
 function buildScript(){
   const name=$('f-name').value.trim(), occ=$('f-occupation').value.trim(),
         city=$('f-city').value.trim(), st=$('f-state').value;
