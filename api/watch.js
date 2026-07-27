@@ -241,6 +241,16 @@ module.exports = async (request, response) => {
   @media(prefers-reduced-motion:reduce){
     *{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important;}
   }
+
+  @media(max-width:560px){
+    .banner{font-size:12.5px;line-height:1.35;padding:9px 18px;}
+    .wrap{padding:18px 14px calc(34px + env(safe-area-inset-bottom));}
+    .brand{font-size:16px;margin-bottom:18px;}
+    h1{font-size:23px;line-height:1.12;}
+    p.sub{font-size:14px;line-height:1.5;margin-bottom:16px;}
+    video{border-radius:14px;}
+    a.cta{width:100%;justify-content:center;box-sizing:border-box;margin-top:18px;padding:14px 18px;}
+  }
 </style>
 </head>
 <body>
