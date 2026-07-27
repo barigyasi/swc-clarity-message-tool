@@ -700,8 +700,14 @@ function buildScript(){
 
   let why=$('f-why').value.trim().replace(/^(because|since)\s+/i,'').replace(/\.+$/,'');
 
+  const sens = SENATORS[st]||[];
+  const lastName = n => n.split(' ').slice(1).join(' ');
+  const greeting = sens.length===2
+    ? `Hello Senator ${lastName(sens[0].name)} and Senator ${lastName(sens[1].name)}`
+    : 'Hello Senator';
+
   const parts=[];
-  parts.push(`Hello Senator, my name is ${name}` +
+  parts.push(`${greeting}, my name is ${name}` +
     (occ ? `, and I'm ${aOrAn(occ)} ${occ}` : '') +
     (city ? ` from ${city}, ${stateName}.` : ` from ${stateName}.`));
   if(bgLines.length) parts.push(bgLines.join(' '));
