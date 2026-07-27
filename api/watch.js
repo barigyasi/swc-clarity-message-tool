@@ -108,13 +108,14 @@ module.exports = async (request, response) => {
     ? `<video id="message-media" controls playsinline preload="metadata" src="${src}"></video>`
     : `<div class="vm-stage" id="vm-stage" role="button" tabindex="0" aria-label="Play answering-machine message">
         <video id="vm-video" muted playsinline preload="auto" src="/assets/main.mp4"></video>
+        <video id="vm-loop" muted playsinline preload="auto" loop src="/assets/unit.mp4" style="display:none"></video>
         <div class="vm-overlay" id="vm-overlay">
           <div class="vm-btn" id="vm-btn">▶</div>
           <span id="vm-label">Play the answering-machine message</span>
         </div>
         <div class="vm-badge">CONSTITUENT VOICEMAIL</div>
       </div>
-      <audio id="message-media" preload="auto" src="${src}"></audio>
+      <audio id="message-media" class="vm-audio" preload="auto" src="${src}"></audio>
       <audio id="vm-intro" preload="auto" src="/assets/intro.m4a"></audio>
       <div class="audio-fallback" id="audio-fallback" hidden>
         <p>Play the constituent's audio message:</p>
@@ -177,7 +178,7 @@ module.exports = async (request, response) => {
   .vm-btn{width:72px;height:72px;border-radius:50%;display:grid;place-items:center;background:#6c11ff;color:#fff;font-size:28px;box-shadow:0 10px 30px rgba(2,8,23,.32);}
   .vm-overlay span{font-size:15px;font-weight:700;text-shadow:0 1px 7px rgba(0,0,0,.75);}
   .vm-badge{position:absolute;left:14px;top:14px;z-index:2;padding:7px 11px;border-radius:1000px;background:rgba(2,8,23,.66);color:#fff;font-size:11px;font-weight:900;letter-spacing:.7px;}
-  #message-media,#vm-intro{display:none;}
+  .vm-audio,#vm-intro{display:none;}
   .audio-fallback{background:#f9fafc;border:1px solid #e2e9f3;border-radius:20px;padding:26px 22px;}
   .audio-fallback p{margin:0 0 12px;color:#64748b;font-size:14px;}
   .audio-fallback audio{width:100%;}
@@ -251,14 +252,15 @@ module.exports = async (request, response) => {
   if (mode === 'audio') {
     var stage = document.getElementById('vm-stage');
     var video = document.getElementById('vm-video');
+    var loopVideo = document.getElementById('vm-loop');
     var intro = document.getElementById('vm-intro');
     var overlay = document.getElementById('vm-overlay');
     var button = document.getElementById('vm-btn');
     var label = document.getElementById('vm-label');
     var fallback = document.getElementById('audio-fallback');
     var playing = false;
-    var audioContext = null;
-    var audioConnected = false;
+    var userAudioStarted = false;
+    var keepAliveTimer = null;
 
     function ready(element) {
       if (element.readyState >= 3) return Promise.resolve();
@@ -279,17 +281,46 @@ module.exports = async (request, response) => {
       });
     }
 
+    function stopKeepAlive() {
+      if (keepAliveTimer) {
+        clearInterval(keepAliveTimer);
+        keepAliveTimer = null;
+      }
+    }
+
+    function startKeepAlive() {
+      stopKeepAlive();
+      keepAliveTimer = setInterval(function () {
+        if (!playing) return;
+
+        // Some mobile browsers pause hidden audio/video when the background clip
+        // changes. Resume either element without restarting the message.
+        if (userAudioStarted && media && !media.ended && media.paused) {
+          media.play().catch(showFallback);
+        }
+
+        var activeVideo = loopVideo.style.display === 'none' ? video : loopVideo;
+        if (activeVideo && activeVideo.paused && !activeVideo.ended) {
+          activeVideo.play().catch(function (error) {
+            console.warn('background video resume failed', error);
+          });
+        }
+      }, 750);
+    }
+
     function resetPlayer() {
       playing = false;
-      try { video.pause(); } catch (error) {}
+      userAudioStarted = false;
+      stopKeepAlive();
+      try { video.pause(); video.currentTime = 0; } catch (error) {}
+      try { loopVideo.pause(); loopVideo.currentTime = 0; } catch (error) {}
       try { intro.pause(); intro.currentTime = 0; } catch (error) {}
       try { media.pause(); media.currentTime = 0; } catch (error) {}
       video.onended = null;
       intro.onended = null;
       media.onended = null;
-      video.loop = false;
-      video.src = '/assets/main.mp4';
-      video.load();
+      video.style.display = 'block';
+      loopVideo.style.display = 'none';
       overlay.style.display = 'flex';
       overlay.classList.remove('loading');
       button.textContent = '▶';
@@ -299,6 +330,12 @@ module.exports = async (request, response) => {
     function showFallback(error) {
       console.error('answering-machine playback failed', error);
       playing = false;
+      userAudioStarted = false;
+      stopKeepAlive();
+      try { video.pause(); } catch (pauseError) {}
+      try { loopVideo.pause(); } catch (pauseError) {}
+      try { intro.pause(); } catch (pauseError) {}
+      try { media.pause(); } catch (pauseError) {}
       stage.hidden = true;
       fallback.hidden = false;
     }
@@ -310,67 +347,63 @@ module.exports = async (request, response) => {
       }
 
       playing = true;
+      userAudioStarted = false;
       overlay.classList.add('loading');
       button.textContent = '◌';
       label.textContent = 'Loading the answering-machine message…';
 
       try {
-        video.src = '/assets/main.mp4';
-        video.loop = false;
-        video.muted = true;
-        video.load();
+        video.currentTime = 0;
+        loopVideo.currentTime = 0;
         intro.currentTime = 0;
         media.currentTime = 0;
+        video.muted = true;
+        loopVideo.muted = true;
+        video.load();
+        loopVideo.load();
         intro.load();
         media.load();
 
-        if (!audioConnected && (window.AudioContext || window.webkitAudioContext)) {
-          audioContext = new (window.AudioContext || window.webkitAudioContext)();
-          await audioContext.resume();
-          var source = audioContext.createMediaElementSource(media);
-          var highpass = audioContext.createBiquadFilter();
-          var lowpass = audioContext.createBiquadFilter();
-          var compressor = audioContext.createDynamicsCompressor();
-          highpass.type = 'highpass';
-          highpass.frequency.value = 300;
-          lowpass.type = 'lowpass';
-          lowpass.frequency.value = 3400;
-          source.connect(highpass);
-          highpass.connect(lowpass);
-          lowpass.connect(compressor);
-          compressor.connect(audioContext.destination);
-          audioConnected = true;
-        }
-
-        await Promise.all([ready(video), ready(intro), ready(media)]);
+        await Promise.all([ready(video), ready(loopVideo), ready(intro), ready(media)]);
         if (!playing) return;
 
-        // Prime the constituent audio during the user's click so mobile browsers
-        // permit it to begin after the intro finishes.
-        media.muted = true;
+        // Prime the constituent audio during the original click. This preserves
+        // permission to start it after the intro on Safari/iOS and Android.
+        media.volume = 0;
         await media.play();
         media.pause();
         media.currentTime = 0;
-        media.muted = false;
+        media.volume = 1;
 
         overlay.style.display = 'none';
         overlay.classList.remove('loading');
         trackPlayback();
 
+        // Use a separate preloaded looping video rather than replacing the src
+        // on the playing element. That prevents the user's audio from being
+        // interrupted when the first background clip ends.
         video.onended = function () {
           if (!playing) return;
-          video.src = '/assets/unit.mp4';
-          video.loop = true;
-          video.play().catch(showFallback);
+          video.onended = null;
+          video.style.display = 'none';
+          loopVideo.style.display = 'block';
+          loopVideo.currentTime = 0;
+          loopVideo.play().catch(showFallback);
         };
 
         intro.onended = function () {
           setTimeout(function () {
-            if (playing) media.play().catch(showFallback);
+            if (!playing) return;
+            media.play().then(function () {
+              userAudioStarted = true;
+              startKeepAlive();
+            }).catch(showFallback);
           }, 300);
         };
 
         media.onended = function () {
+          userAudioStarted = false;
+          stopKeepAlive();
           setTimeout(function () {
             if (playing) resetPlayer();
           }, 1000);
@@ -391,6 +424,12 @@ module.exports = async (request, response) => {
         }
       });
     }
+
+    document.addEventListener('visibilitychange', function () {
+      if (!document.hidden && playing && userAudioStarted && media.paused && !media.ended) {
+        media.play().catch(showFallback);
+      }
+    });
 
     var fallbackMedia = document.getElementById('fallback-media');
     if (fallbackMedia) fallbackMedia.addEventListener('play', trackPlayback);
