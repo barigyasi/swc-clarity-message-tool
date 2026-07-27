@@ -4,6 +4,7 @@
   "private": true,
   "dependencies": {
     "@vercel/blob": "^2.6.1",
-    "ffmpeg-static": "^5.2.0"
+    "ffmpeg-static": "^5.2.0",
+    "google-auth-library": "^10.9.1"
   }
 }

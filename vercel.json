@@ -11,5 +11,17 @@
       "source": "/watch/:id",
       "destination": "/api/watch?id=:id"
     }
+  ],
+  "redirects": [
+    {
+      "source": "/admin",
+      "destination": "/",
+      "permanent": false
+    },
+    {
+      "source": "/admin.html",
+      "destination": "/",
+      "permanent": false
+    }
   ]
 }
