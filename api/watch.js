@@ -163,9 +163,10 @@ module.exports = async (request, response) => {
 <script defer src="/_vercel/insights/script.js"></script>
 <style>
   @import url('https://api.fontshare.com/v2/css?f[]=satoshi@500,700,900&display=swap');
-  html{margin:0;padding:0;width:100%;overflow-x:hidden;}
-  body{margin:0;padding:0;width:100%;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;overflow-x:hidden;background:#fff;color:#020817;font-family:'Satoshi',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;}
-  .banner{width:100vw;box-sizing:border-box;margin-left:calc(50% - 50vw);margin-right:calc(50% - 50vw);background:#6c11ff;color:#fff;text-align:center;padding:12px 20px;font-weight:700;font-size:15px;}
+  html{margin:0;padding:0;width:100%;max-width:100%;overflow-x:clip;}
+  body{margin:0;padding:0;width:100%;max-width:100%;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;overflow-x:clip;background:#fff;color:#020817;font-family:'Satoshi',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;}
+  *,*::before,*::after{box-sizing:border-box;}
+  .banner{width:100%;max-width:100%;margin:0;background:#6c11ff;color:#fff;text-align:center;padding:12px 20px;font-weight:700;font-size:15px;}
   .wrap{max-width:720px;width:100%;box-sizing:border-box;flex:1;margin:0 auto;padding:28px 24px 60px;}
   .brand{display:flex;align-items:center;gap:12px;font-weight:900;font-size:18px;margin-bottom:28px;}
   h1{font-size:26px;letter-spacing:-.4px;margin:0 0 8px;}
@@ -186,8 +187,8 @@ module.exports = async (request, response) => {
   @keyframes vmSpin{to{transform:rotate(360deg);}}
   a.cta{display:inline-flex;margin-top:26px;background:#6c11ff;color:#fff;text-decoration:none;border-radius:1000px;padding:15px 32px;font-weight:700;font-size:15.5px;}
   a.cta:hover{background:#923dfe;}
-  .swc-footer{margin-top:auto;border-top:1px solid #e2e9f3;background:#f9fafc;}
-  .swc-footer-inner{max-width:1376px;margin:0 auto;padding:32px 24px;display:grid;grid-template-columns:minmax(220px,1fr) auto;gap:20px 40px;align-items:center;}
+  .swc-footer{width:100%;max-width:100%;margin-top:auto;border-top:1px solid #e2e9f3;background:#f9fafc;}
+  .swc-footer-inner{width:100%;max-width:1376px;margin:0 auto;padding:32px 24px;display:grid;grid-template-columns:minmax(220px,1fr) auto;gap:20px 40px;align-items:center;}
   .swc-footer-brand{display:flex;align-items:center;gap:11px;color:#020817;text-decoration:none;font-size:18px;font-weight:900;width:max-content;}
   .swc-footer-brand img{width:30px;height:30px;display:block;}
   .swc-footer-copy{color:#64748b;font-size:13.5px;line-height:1.55;margin:8px 0 0;max-width:590px;}
