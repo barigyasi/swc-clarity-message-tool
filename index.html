@@ -214,6 +214,22 @@
   #swc-cam .playback{width:100%; border-radius:20px; background:#0b0d17; margin-top:14px; border:1px solid var(--line);}
   #swc-cam video.playback{aspect-ratio:16/10;}
 
+  /* answering-machine preview (voice notes) — b-roll is landscape on every device */
+  #swc-cam .stage.vm{aspect-ratio:16/9; max-height:none;}
+  #swc-cam .stage.vm video{transform:none; object-fit:contain;}
+  #swc-cam .vm-overlay{
+    position:absolute; inset:0; display:flex; flex-direction:column; gap:12px;
+    align-items:center; justify-content:center; background:rgba(2,8,23,.45);
+    cursor:pointer; z-index:3;
+  }
+  #swc-cam .vm-overlay .vm-btn{
+    width:72px; height:72px; border-radius:50%; background:var(--primary);
+    display:grid; place-items:center; font-size:28px; color:#fff;
+  }
+  #swc-cam .vm-overlay span{color:#fff; font-weight:700; font-size:14px; text-shadow:0 1px 6px rgba(0,0,0,.7); text-align:center; padding:0 20px;}
+  #swc-cam .vm-overlay.loading .vm-btn{animation:swcSpin 1s linear infinite; font-size:22px;}
+  @keyframes swcSpin{to{transform:rotate(360deg);}}
+
   /* senators */
   #swc-cam .senators{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:16px;}
   @media(max-width:560px){#swc-cam .senators{grid-template-columns:1fr;}}
@@ -446,9 +462,17 @@
   <section class="step" id="step-review">
     <div class="card">
       <h2>How'd it go?</h2>
-      <p class="sub">Give it a listen. Nobody nails it on take one — re-record as many times as you like.</p>
+      <p class="sub" id="review-sub">Give it a watch. Nobody nails it on take one — re-record as many times as you like.</p>
       <video class="playback" id="playback-video" controls playsinline style="display:none"></video>
       <audio class="playback" id="playback-audio" controls style="display:none"></audio>
+
+      <div class="stage vm" id="vm-stage" style="display:none">
+        <video id="vm-video" playsinline muted preload="auto"></video>
+        <div class="vm-overlay" id="vm-overlay" onclick="SWCC.vmToggle()">
+          <div class="vm-btn" id="vm-btn">▶</div>
+          <span id="vm-label">Play your answering-machine video</span>
+        </div>
+      </div>
 
       <label class="consent-row">
         <input type="checkbox" id="consent-checkbox">
@@ -800,6 +824,7 @@ function leaveRecorderBack(){
 
 /* ---------------- recorder ---------------- */
 function startRecorderStep(){
+  if($('vm-stage')) vmReset();
   go('record');
   $('rec-title').textContent = S.mode==='video' ? 'Record your video message' : 'Record your voice note';
   const script = $('script-text').value.trim();
@@ -909,13 +934,78 @@ function showReview(){
   stopStream();
   go('review');
   const v=$('playback-video'), a=$('playback-audio');
-  v.style.display='none'; a.style.display='none';
-  if(S.mode==='video'){ v.src=S.blobURL; v.style.display='block'; }
-  else { a.src=S.blobURL; a.style.display='block'; }
+  v.style.display='none'; a.style.display='none'; $('vm-stage').style.display='none';
+  if(S.mode==='video'){
+    v.src=S.blobURL; v.style.display='block';
+    $('review-sub').textContent="Give it a watch. Nobody nails it on take one — re-record as many times as you like.";
+  } else {
+    // voice note: preview the full answering-machine video with their audio
+    vmReset();
+    $('vm-stage').style.display='block';
+    $('review-sub').textContent="Here's your message as your senators will see it — a voicemail landing in a Senate office. Nobody nails it on take one — re-record as many times as you like.";
+  }
+}
+
+/* ---- in-browser answering-machine preview (no upload: same b-roll assets + local audio) ---- */
+let vmIntro=null, vmMsg=null, vmPlaying=false, vmAudioCtx=null;
+const vmReady = el => el.readyState>=3 ? Promise.resolve()
+  : new Promise(res=>el.addEventListener('canplaythrough', res, {once:true}));
+
+function vmReset(){
+  vmPlaying=false;
+  const vid=$('vm-video');
+  try{ vid.pause(); }catch(e){}
+  vid.loop=false; vid.onended=null;
+  if(vmIntro){ try{vmIntro.pause();}catch(e){} vmIntro=null; }
+  if(vmMsg){ try{vmMsg.pause();}catch(e){} vmMsg=null; }
+  const ov=$('vm-overlay');
+  ov.style.display='flex'; ov.classList.remove('loading');
+  $('vm-btn').textContent='▶';
+  $('vm-label').textContent='Play your answering-machine video';
+}
+
+async function vmToggle(){
+  if(vmPlaying){ vmReset(); return; }
+  vmPlaying=true;
+  const vid=$('vm-video'), ov=$('vm-overlay');
+  ov.classList.add('loading');
+  $('vm-btn').textContent='◌';
+  $('vm-label').textContent='Compiling your answering-machine video…';
+  try{
+    vmIntro = new Audio('/assets/intro.m4a');
+    vmMsg = new Audio(S.blobURL);
+    // telephone EQ on the message, mirroring the server composite
+    if(!vmAudioCtx) vmAudioCtx = new (window.AudioContext||window.webkitAudioContext)();
+    await vmAudioCtx.resume();
+    const src=vmAudioCtx.createMediaElementSource(vmMsg);
+    const hp=vmAudioCtx.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=300;
+    const lp=vmAudioCtx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=3400;
+    const comp=vmAudioCtx.createDynamicsCompressor();
+    src.connect(hp); hp.connect(lp); lp.connect(comp); comp.connect(vmAudioCtx.destination);
+
+    vid.src='/assets/main.mp4'; vid.loop=false; vid.muted=true;
+    vmIntro.load(); vid.load();
+    await Promise.all([vmReady(vid), vmReady(vmIntro)]);
+    if(!vmPlaying) return;  // cancelled while buffering
+
+    ov.style.display='none'; ov.classList.remove('loading');
+    vid.onended=()=>{ vid.src='/assets/unit.mp4'; vid.loop=true; vid.play().catch(()=>{}); };
+    await vid.play();
+    await vmIntro.play();
+    vmIntro.onended=()=>{ setTimeout(()=>{ if(vmPlaying && vmMsg) vmMsg.play().catch(()=>{}); }, 300); };
+    vmMsg.onended=()=>{ setTimeout(()=>{ if(vmPlaying) vmReset(); }, 1000); };
+  }catch(e){
+    console.error('vm preview failed', e);
+    vmReset();
+    // assets unreachable (e.g. embed on another host): fall back to plain audio playback
+    $('vm-stage').style.display='none';
+    const a=$('playback-audio'); a.src=S.blobURL; a.style.display='block';
+  }
 }
 
 /* ---------------- senators & send ---------------- */
 function showSenators(){
+  if($('vm-stage')) vmReset();
   const st=$('f-state').value;
   if(st) $('sen-state').value=st;
   renderSenators();
@@ -1135,7 +1225,7 @@ function approveAndContinue(){
 return {go, buildScript, updateMeter, pickMode, startRecorderStep, initCapture,
         leaveRecorder, leaveRecorderBack, toggleRecord, showSenators, renderSenators,
         approveAndContinue, skipScript, backFromMode, proceedToDelivery, postToX,
-        copyPostText, pledgeToggle, pledgeClose, pledgeContinue, finish};
+        copyPostText, vmToggle, pledgeToggle, pledgeClose, pledgeContinue, finish};
 })();
 </script>
 <!-- BUILDER-EMBED-END -->
