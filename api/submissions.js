@@ -19,7 +19,7 @@ module.exports = async (request, response) => {
       })
     );
     const clean = submissions
-      .filter(Boolean)
+      .filter((submission) => submission && submission.consent === true)
       .sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt));
     response.status(200).json({ count: clean.length, submissions: clean });
   } catch (error) {

@@ -480,9 +480,10 @@
         </div>
       </div>
 
+      <p class="hint" style="margin-top:18px;">Approving creates a public watch link so your message can be shared. The optional permission below only controls whether Stand With Crypto may reuse the recording in advocacy compilations.</p>
       <label class="consent-row">
         <input type="checkbox" id="consent-checkbox">
-        <span>I consent to Stand With Crypto using this video for advocacy purposes (e.g., a compilation reel of constituent messages). SWC will not use it for anything else.</span>
+        <span><b>Optional:</b> I also consent to Stand With Crypto reusing this recording for advocacy purposes, such as a compilation reel of constituent messages.</span>
       </label>
       <div class="upload-status" id="upload-status"></div>
 
@@ -1161,6 +1162,11 @@ function canNativeShare(){
 }
 function updateShareDesc(){ layoutShareOptions(); }
 function postToX(e){
+  if(!S.swcVideoUrl){
+    e.preventDefault();
+    showToast('Your public video link is not ready yet. Go back and create the share link first.');
+    return false;
+  }
   trackEvent('X Share Opened', {mode:S.mode||'unknown', state:$('sen-state').value||'unknown'});
   if(!canNativeShare()){
     // on a share-capable device, don't dump voice users into the link flow
@@ -1274,24 +1280,46 @@ async function uploadToSWC(blob, meta){
 async function approveAndContinue(){
   const consent = $('consent-checkbox').checked;
   const button = $('btn-approve');
-  if(button) button.disabled=true;
+  const status = $('upload-status');
+
+  if(!S.blob){
+    status.textContent='No recording was found. Please record your message again.';
+    status.className='upload-status err';
+    return;
+  }
+
+  const originalLabel = button ? button.textContent : '';
+  if(button){
+    button.disabled=true;
+    button.textContent = S.mode==='audio' ? 'Building your share video…' : 'Creating your share link…';
+  }
 
   try{
-    if(consent && S.blob){
-      await uploadToSWC(S.blob, {
-        name: $('f-name').value.trim(),
-        occupation: $('f-occupation').value.trim(),
-        city: $('f-city').value.trim(),
-        state: $('f-state').value,
-        why: $('f-why').value.trim(),
-        script: $('script-text').value,
-        mode: S.mode,
-        consent: true,
-      });
+    const ok = await uploadToSWC(S.blob, {
+      name: $('f-name').value.trim(),
+      occupation: $('f-occupation').value.trim(),
+      city: $('f-city').value.trim(),
+      state: $('f-state').value,
+      why: $('f-why').value.trim(),
+      script: $('script-text').value,
+      mode: S.mode,
+      consent,
+    });
+
+    if(!ok || !S.swcVideoUrl){
+      throw new Error('share link was not created');
     }
+
     showSenators();
-  } finally {
-    if(button) button.disabled=false;
+  }catch(e){
+    console.error('share-link creation failed', e);
+    status.textContent='We could not create the public video link. Please try Approve & Continue again.';
+    status.className='upload-status err';
+  }finally{
+    if(button){
+      button.disabled=false;
+      button.textContent=originalLabel || 'Approve & Continue →';
+    }
   }
 }
 
