@@ -606,6 +606,17 @@ const BACKGROUNDS = [
   ["first-generation American","I'm a first-generation American."],
   ["faith community leader","I'm a leader in my faith community."]
 ];
+/* SWC advocate counts per state — snapshot fallback; upgraded live from /api/advocates on load */
+let ADVOCATES = {
+  AK:6062, AL:30352, AR:17756, AZ:64933, CA:378962, CO:51113, CT:29835,
+  DE:7143, FL:245834, GA:91957, HI:3814, IA:14868, ID:13260, IL:93038,
+  IN:40830, KS:16719, KY:24158, LA:29602, MA:52532, MD:47408, ME:7445,
+  MI:63900, MN:33911, MO:35645, MS:15508, MT:7156, NC:73447, ND:4945,
+  NE:9991, NH:9702, NJ:94521, NM:12133, NV:40234, NY:222038, OH:74075,
+  OK:24741, OR:34320, PA:85034, RI:8104, SC:35103, SD:4941, TN:46297,
+  TX:241131, UT:28767, VA:66135, VT:2973, WA:68294, WI:31351, WV:8124, WY:3458
+};
+
 const WHY_PROMPTS = [
   "it cut payment costs for my business",
   "it creates new pathways for community ownership",
@@ -662,6 +673,10 @@ async function loadConfig(){
     if(r.ok){ const c = await r.json(); S.voiceEnabled = !!c.voiceNotesEnabled; }
   }catch(e){ /* non-Vercel host (local file / embed preview): keep default */ }
   applyConfig();
+  try{
+    const r = await fetch('/api/advocates', {cache:'no-store'});
+    if(r.ok){ const d = await r.json(); if(d && d.counts) ADVOCATES = {...ADVOCATES, ...d.counts}; }
+  }catch(e){ /* keep snapshot */ }
 }
 function applyConfig(){
   $('mode-audio').style.display = S.voiceEnabled ? '' : 'none';
@@ -711,7 +726,11 @@ function buildScript(){
     (occ ? `, and I'm ${aOrAn(occ)} ${occ}` : '') +
     (city ? ` from ${city}, ${stateName}.` : ` from ${stateName}.`));
   if(bgLines.length) parts.push(bgLines.join(' '));
-  parts.push(`I'm one of millions of Americans who use crypto — and one of your constituents.`);
+  const advocateCount = ADVOCATES[st];
+  const roundedDown = advocateCount ? Math.floor(advocateCount/1000)*1000 : 0;
+  parts.push(roundedDown >= 1000
+    ? `I'm one of millions of Americans who use crypto — and one of over ${roundedDown.toLocaleString('en-US')} crypto voters in ${stateName}.`
+    : `I'm one of millions of Americans who use crypto — and one of your constituents.`);
   if(why) parts.push(`Crypto matters to me because ${why}.`);
   parts.push(`That's why I'm asking you to pass the CLARITY Act. We need clear rules of the road that protect consumers and keep this innovation — and these jobs — here in America.`);
   parts.push(`Please support the CLARITY Act. Thank you.`);
