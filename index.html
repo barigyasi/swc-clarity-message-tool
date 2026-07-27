@@ -244,6 +244,11 @@
   #swc-cam .send-opt .ico{font-size:26px;}
   #swc-cam .send-opt b{display:block; font-size:15.5px; font-weight:700;}
   #swc-cam .send-opt span{font-size:13px; color:var(--muted);}
+  #swc-cam .step-num{
+    width:26px; height:26px; border-radius:50%; place-items:center;
+    background:var(--primary-lightest); color:var(--primary);
+    font-size:13px; font-weight:900; flex-shrink:0;
+  }
 
   #swc-cam .done-banner{
     display:none; background:var(--light-green); border:1px solid var(--good);
@@ -480,14 +485,21 @@
       <h2>Share it with your senators</h2>
       <p class="sub" id="send-sub">Your message is ready for the public square. Post it to X and tag your senators — a public post from a real constituent gets seen by their staff in a way private messages never do. The more of us they hear, the harder we are to ignore.</p>
 
-      <div class="send-opts">
+      <div class="send-opts" id="send-opts">
         <a class="send-opt" id="opt-download">
+          <span class="step-num" id="num-download" style="display:none"></span>
           <div class="ico">⬇️</div>
-          <div><b>Download your recording</b><span id="opt-download-desc">Save it first — you'll attach it to your post in the next step</span></div>
+          <div><b id="opt-download-title">Download your video</b><span id="opt-download-desc">Save it first — you'll attach it to your post</span></div>
+        </a>
+        <a class="send-opt" id="opt-copytext" onclick="SWCC.copyPostText()">
+          <span class="step-num" id="num-copytext" style="display:none"></span>
+          <div class="ico">📋</div>
+          <div><b id="opt-copytext-title">Copy your post text</b><span id="opt-copytext-desc">Copy the pre-written post tagging your senators</span></div>
         </a>
         <a class="send-opt" id="opt-social" target="_blank" rel="noopener" onclick="return SWCC.postToX(event)">
+          <span class="step-num" id="num-social" style="display:none"></span>
           <div class="ico">𝕏</div>
-          <div><b>Post to X and tag your senators</b><span id="opt-social-desc">Opens X with your message and their @handles pre-filled — attach your downloaded video, then post</span></div>
+          <div><b id="opt-social-title">Post to X and tag your senators</b><span id="opt-social-desc">Opens X with your message and their @handles pre-filled — attach your downloaded video, then post</span></div>
         </a>
       </div>
 
@@ -729,7 +741,7 @@ function buildScript(){
   const advocateCount = ADVOCATES[st];
   const roundedDown = advocateCount ? Math.floor(advocateCount/1000)*1000 : 0;
   parts.push(roundedDown >= 1000
-    ? `I'm one of millions of Americans who use crypto — and one of over ${roundedDown.toLocaleString('en-US')} crypto voters in ${stateName}.`
+    ? `I'm one of millions of Americans who use crypto — and one of over ${roundedDown.toLocaleString('en-US')} Stand With Crypto advocates in ${stateName}.`
     : `I'm one of millions of Americans who use crypto — and one of your constituents.`);
   if(why) parts.push(`Crypto matters to me because ${why}.`);
   parts.push(`That's why I'm asking you to pass the CLARITY Act. We need clear rules of the road that protect consumers and keep this innovation — and these jobs — here in America.`);
@@ -922,23 +934,59 @@ function prepSendLinks(){
   const dl=$('opt-download');
   if(S.compositeDownloadUrl){
     dl.href=S.compositeDownloadUrl; dl.removeAttribute('download');
-    $('opt-download-desc').textContent='Your voicemail video (MP4) — save it to attach anywhere';
   } else {
     dl.href=S.blobURL||'#'; dl.download=fname;
-    $('opt-download-desc').textContent="Save it first — you'll attach it to your post in the next step";
   }
 
-  // desktop fallback: intent link (+ watch link so the video travels even without a manual attach)
+  // intent link fallback (+ watch link so the video travels even without a manual attach)
   let text = buildPostText();
   if(S.swcVideoUrl) text += `\n\nWatch my message: ${S.swcVideoUrl}`;
   $('opt-social').href=`https://x.com/intent/post?text=${encodeURIComponent(text)}`;
-  $('opt-social-desc').textContent = S.compositePending
-    ? 'Your voicemail video is processing — one moment…'
-    : S.swcVideoUrl
-      ? 'Opens X with your message, their @handles, and your video link already in the post — just hit post'
-      : 'Opens X with your message and their @handles pre-filled — attach your downloaded video, then post';
 
+  layoutShareOptions();
   prepareShareFile();  // async; upgrades the button to a native share flow when possible
+}
+
+/* mobile = touch device; drives share-screen layout and native-share eligibility */
+const MOBILE = window.matchMedia('(pointer: coarse)').matches;
+
+function layoutShareOptions(){
+  const wrap=$('send-opts');
+  if(!wrap) return;
+  const dl=$('opt-download'), cp=$('opt-copytext'), soc=$('opt-social');
+  const nums={dl:$('num-download'), cp:$('num-copytext'), soc:$('num-social')};
+  if(MOBILE){
+    // X on top; download + post text as the manual alternative
+    wrap.append(soc, dl, cp);
+    Object.values(nums).forEach(n=>{ n.style.display='none'; });
+    $('opt-social-title').textContent='Post to X and tag your senators';
+    $('opt-social-desc').textContent = S.compositePending
+      ? 'Your voicemail video is processing — one moment…'
+      : canNativeShare()
+        ? 'Opens your share menu — scroll through until you see X, then tap the icon to post'
+        : 'Opens X with your message and their @handles pre-filled — attach your downloaded video, then post';
+    $('opt-download-title').textContent='Download your video';
+    $('opt-download-desc').textContent='Download the video and attach it to your own social media post';
+    $('opt-copytext-desc').textContent='Copy the pre-written post text to paste into your post';
+  } else {
+    // desktop: numbered manual flow — download, copy text, then open X
+    wrap.append(dl, cp, soc);
+    nums.dl.textContent='1'; nums.cp.textContent='2'; nums.soc.textContent='3';
+    Object.values(nums).forEach(n=>{ n.style.display='grid'; });
+    $('opt-download-title').textContent='Download your video';
+    $('opt-download-desc').textContent="Save your video file — you'll attach it in step 3";
+    $('opt-copytext-desc').textContent='Click to copy the pre-written post tagging your senators';
+    $('opt-social-title').textContent='Open X and post';
+    $('opt-social-desc').textContent='Log in to X, paste your text, attach the video, and post';
+  }
+}
+async function copyPostText(){
+  try{
+    await navigator.clipboard.writeText(buildPostText());
+    showToast('Post text copied — paste it into your post.');
+  }catch(e){
+    showToast("Couldn't copy automatically — select and copy the text from your script instead.");
+  }
 }
 
 /* ---------------- Post to X (Web Share API, mobile-first) ---------------- */
@@ -976,18 +1024,14 @@ async function prepareShareFile(){
   updateShareDesc();
 }
 function canNativeShare(){
-  return !!(S.shareFile && navigator.canShare && navigator.canShare({files:[S.shareFile]}));
+  return !!(MOBILE && S.shareFile && navigator.canShare && navigator.canShare({files:[S.shareFile]}));
 }
-function updateShareDesc(){
-  if(canNativeShare()){
-    $('opt-social-desc').textContent='Opens your share menu with the video attached — pick X and post';
-  }
-}
+function updateShareDesc(){ layoutShareOptions(); }
 function postToX(e){
   if(!canNativeShare()){
     // on a share-capable device, don't dump voice users into the link flow
     // while their voicemail video is still processing or downloading
-    if(typeof navigator.share==='function' && S.compositePending){
+    if(MOBILE && typeof navigator.share==='function' && S.compositePending){
       e.preventDefault();
       showToast('Your voicemail video is almost ready — try again in a few seconds.');
       prepareShareFile();
@@ -1082,7 +1126,7 @@ function approveAndContinue(){
 return {go, buildScript, updateMeter, pickMode, startRecorderStep, initCapture,
         leaveRecorder, leaveRecorderBack, toggleRecord, showSenators, renderSenators,
         approveAndContinue, skipScript, backFromMode, proceedToDelivery, postToX,
-        pledgeToggle, pledgeClose, pledgeContinue, finish};
+        copyPostText, pledgeToggle, pledgeClose, pledgeContinue, finish};
 })();
 </script>
 <!-- BUILDER-EMBED-END -->
