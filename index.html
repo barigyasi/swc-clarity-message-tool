@@ -302,7 +302,7 @@
     <div class="card">
       <div class="hero-kicker">The CLARITY Act · Senate Vote Ahead</div>
       <h1>Put a face and a voice to your CLARITY support.</h1>
-      <p class="sub">Senators hear from lobbyists and big institutions all the time, but the most impactful story they can hear is yours. A short message from the voice of a real constituent hits different. Record a quick video — or if you'd rather stay off camera, leave a voice note and we'll turn it into a retro answering-machine video for your senator. Takes about 3 minutes.</p>
+      <p class="sub">Senators hear from lobbyists and big institutions all the time, but the most impactful story they can hear is yours. A short message from the voice of a real constituent hits different. We'll help you write a short script and record a quick video or audio message for your senators and share it to social media. Takes about 3 minutes.</p>
       <div class="hero-stats">
         <div><b>~30 sec</b> message length</div>
         <div><b>2</b> senators reached</div>
@@ -318,7 +318,7 @@
   <section class="step" id="step-form">
     <div class="card">
       <h2>Tell us a little about yourself</h2>
-      <p class="sub">We'll turn this into a short, personal script. Your custom script will scroll, teleprompter style, during your recording to ensure confidence and clarity. Nothing here is stored — it just builds your message.</p>
+      <p class="sub">We'll turn this into a short, personal script. Your custom script will scroll, teleprompter style, during your recording to ensure confidence and clarity. Nothing is stored here without your consent.</p>
 
       <div class="skip-callout">
         <span>Already know what you want to tell your senators?</span>
@@ -667,8 +667,8 @@ function applyConfig(){
   $('mode-audio').style.display = S.voiceEnabled ? '' : 'none';
   const landingSub = document.querySelector('#step-landing .sub');
   if(landingSub) landingSub.textContent = S.voiceEnabled
-    ? "Senators hear from lobbyists and big institutions all the time, but the most impactful story they can hear is yours. A short message from the voice of a real constituent hits different. Record a quick video — or if you'd rather stay off camera, leave a voice note and we'll turn it into a retro answering-machine video for your senator. Takes about 3 minutes."
-    : "Senators hear from lobbyists and big institutions all the time, but the most impactful story they can hear is yours. A short message from the voice of a real constituent hits different. We'll help you write a short script and record a quick video for your senators. Takes about 3 minutes.";
+    ? "Senators hear from lobbyists and big institutions all the time, but the most impactful story they can hear is yours. A short message from the voice of a real constituent hits different. We'll help you write a short script and record a quick video or audio message for your senators and share it to social media. Takes about 3 minutes."
+    : "Senators hear from lobbyists and big institutions all the time, but the most impactful story they can hear is yours. A short message from the voice of a real constituent hits different. We'll help you write a short script and record a quick video message for your senators and share it to social media. Takes about 3 minutes.";
 }
 if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', init);
 else init();
