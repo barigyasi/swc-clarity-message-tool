@@ -23,11 +23,6 @@ function parseBody(request) {
   return {};
 }
 
-function normalizeStoreId(value) {
-  const storeId = String(value || '').trim();
-  return storeId.startsWith('store_') ? storeId.slice('store_'.length) : storeId;
-}
-
 function parseMediaUrl(value) {
   let url;
   try {
@@ -36,18 +31,15 @@ function parseMediaUrl(value) {
     throw new Error('invalid media url');
   }
 
-  const storeId = normalizeStoreId(process.env.BLOB_STORE_ID);
-  if (!storeId) {
-    throw new Error('Blob storage is not connected to this deployment');
-  }
-
-  const expectedHostname = `${storeId}.public.blob.vercel-storage.com`;
+  // BLOB_STORE_ID is an internal store identifier and is not guaranteed to
+  // equal the public Blob hostname prefix. Validate the public Blob domain and
+  // the submissions path instead of comparing them directly.
   if (
     url.protocol !== 'https:' ||
-    url.hostname !== expectedHostname ||
+    !url.hostname.endsWith('.public.blob.vercel-storage.com') ||
     !url.pathname.startsWith('/submissions/')
   ) {
-    throw new Error('media does not belong to this project Blob store');
+    throw new Error('invalid media url');
   }
 
   // Public Blob playback does not require query parameters.
@@ -98,8 +90,6 @@ module.exports = async (request, response) => {
     });
   } catch (error) {
     console.error('share registration failed', error);
-    return response.status(500).json({
-      error: error instanceof Error ? error.message : 'share registration failed',
-    });
+    return response.status(500).json({ error: 'share registration failed' });
   }
 };

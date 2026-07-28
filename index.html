@@ -1769,11 +1769,11 @@ async function uploadToSWC(blob, meta){
     const message = e && e.message ? e.message : 'Unknown error';
     const timedOut = e && (e.name==='AbortError' || /timed out|too long/i.test(message));
     if(S.uploadedMediaUrl){
-      status.textContent = `Your recording uploaded, but the public link could not be finished (${message}). Tap Approve & Continue to retry without uploading again.`;
+      status.textContent = 'Your recording uploaded, but the public link could not be finished. Tap Approve & Continue to retry without uploading again.';
     }else{
       status.textContent = timedOut
         ? 'The upload timed out. Your recording is still on this page—check your connection and tap Approve & Continue again.'
-        : `We could not upload the recording (${message}). Your recording is still on this page—please tap Approve & Continue again.`;
+        : 'We could not upload the recording. Your recording is still on this page—please tap Approve & Continue again.';
     }
     status.className='upload-status err';
     return false;

@@ -39,11 +39,6 @@ async function download(url, dest, attempts = 5) {
   throw lastError || new Error('fetch failed');
 }
 
-function normalizeStoreId(value) {
-  const storeId = String(value || '').trim();
-  return storeId.startsWith('store_') ? storeId.slice('store_'.length) : storeId;
-}
-
 async function ffmpegDuration(file) {
   // ffmpeg exits 1 when no output is given; the Duration line is on stderr either way.
   try {
@@ -90,15 +85,12 @@ module.exports = async (request, response) => {
     return response.status(400).json({ error: 'bad url' });
   }
 
-  const storeId = normalizeStoreId(process.env.BLOB_STORE_ID);
-  const expectedHostname = storeId
-    ? `${storeId}.public.blob.vercel-storage.com`
-    : '';
-
+  // BLOB_STORE_ID is not the public hostname prefix. Accept only public
+  // Vercel Blob media under the submissions path; the file was produced by
+  // this app's presigned upload flow.
   if (
-    !expectedHostname ||
     url.protocol !== 'https:' ||
-    url.hostname !== expectedHostname ||
+    !url.hostname.endsWith('.public.blob.vercel-storage.com') ||
     !url.pathname.startsWith('/submissions/') ||
     !/\.(webm|m4a|mp4|ogg)$/i.test(url.pathname)
   ) {
