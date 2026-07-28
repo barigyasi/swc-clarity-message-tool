@@ -1691,14 +1691,20 @@ async function uploadToSWC(blob, meta){
       const uploadController = new AbortController();
       const uploadTimer = setTimeout(()=>uploadController.abort(), 5 * 60 * 1000);
       try{
-        result = await mod.uploadPresigned(pathname, blob, {
+        const uploadOptions = {
           access:'public',
           handleUploadUrl:'/api/blob-upload',
           contentType: blob.type || (isVideo?'video/webm':'audio/webm'),
           clientPayload: JSON.stringify(uploadMeta),
           multipart: false,
           abortSignal: uploadController.signal,
-          onUploadProgress: ({loaded, total, percentage})=>{
+        };
+
+        // iOS Safari falls back to XMLHttpRequest when an upload-progress callback is
+        // supplied. On some iPhones that XHR path stalls before sending any bytes.
+        // Omitting the callback lets the Blob SDK use Safari's native fetch upload path.
+        if(!IS_IOS){
+          uploadOptions.onUploadProgress = ({loaded, total, percentage})=>{
             const pct = Math.max(0, Math.min(100, Math.round(Number(percentage)||0)));
             const loadedBytes = Number(loaded);
             const totalBytes = Number(total) || blob.size;
@@ -1711,8 +1717,14 @@ async function uploadToSWC(blob, meta){
             }
             const approveButton = $('btn-approve');
             if(approveButton) approveButton.textContent = `Uploading… ${pct}%`;
-          },
-        });
+          };
+        }else{
+          status.textContent = `Uploading your ${isVideo?'video':'voice message'}… keep this page open.`;
+          const approveButton = $('btn-approve');
+          if(approveButton) approveButton.textContent = 'Uploading…';
+        }
+
+        result = await mod.uploadPresigned(pathname, blob, uploadOptions);
       }finally{
         clearTimeout(uploadTimer);
       }
