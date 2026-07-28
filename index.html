@@ -1653,7 +1653,9 @@ async function registerShare(shareId, mediaUrl, mode){
 
 async function uploadToSWC(blob, meta){
   const status=$('upload-status');
-  status.textContent='Saving a copy for SWC…'; status.className='upload-status';
+  const uploadSizeMB = Math.max(0.1, blob.size / (1024 * 1024));
+  status.textContent=`Preparing secure upload (${uploadSizeMB.toFixed(1)} MB)…`;
+  status.className='upload-status';
   const shareId = makeShareId();
   S.shareId = shareId;
   const uploadMeta = {...meta, shareId};
@@ -1670,7 +1672,14 @@ async function uploadToSWC(blob, meta){
     const safeState = (meta.state||'na').replace(/[^a-zA-Z0-9-]/g,'');
     const pathname = `submissions/${Date.now()}-${safeState}-${meta.mode}.${ext}`;
     const uploadController = new AbortController();
-    const uploadTimer = setTimeout(()=>uploadController.abort(), 120000);
+    const uploadTimer = setTimeout(()=>uploadController.abort(), 5 * 60 * 1000);
+    let lastLoaded = 0;
+    let lastProgressAt = Date.now();
+    const stallTimer = setInterval(()=>{
+      // A connection that transfers no additional bytes for 45 seconds is
+      // considered stalled. Keep the local recording so the user can retry.
+      if(Date.now() - lastProgressAt > 45000) uploadController.abort();
+    }, 5000);
     let result;
     try{
       result = await mod.uploadPresigned(pathname, blob, {
@@ -1678,15 +1687,28 @@ async function uploadToSWC(blob, meta){
         handleUploadUrl:'/api/blob-upload',
         contentType: blob.type || (isVideo?'video/webm':'audio/webm'),
         clientPayload: JSON.stringify(uploadMeta),
-        multipart: blob.size > 10 * 1024 * 1024,
+        // Campaign recordings are capped at 75 MB. Vercel recommends
+        // multipart uploads for files above 100 MB; forcing multipart for
+        // ordinary iPhone recordings can add avoidable setup/concurrency work.
+        multipart: false,
         abortSignal: uploadController.signal,
-        onUploadProgress: ({percentage})=>{
+        onUploadProgress: ({loaded, total, percentage})=>{
+          const loadedBytes = Number(loaded) || 0;
+          if(loadedBytes > lastLoaded){
+            lastLoaded = loadedBytes;
+            lastProgressAt = Date.now();
+          }
           const pct = Math.max(0, Math.min(100, Math.round(Number(percentage)||0)));
-          status.textContent = `Uploading your ${isVideo?'video':'voice message'}… ${pct}%`;
+          const sentMB = loadedBytes / (1024 * 1024);
+          const totalMB = (Number(total) || blob.size) / (1024 * 1024);
+          status.textContent = `Uploading your ${isVideo?'video':'voice message'}… ${pct}% (${sentMB.toFixed(1)} of ${totalMB.toFixed(1)} MB)`;
+          const approveButton = $('btn-approve');
+          if(approveButton) approveButton.textContent = `Uploading… ${pct}%`;
         },
       });
     }finally{
       clearTimeout(uploadTimer);
+      clearInterval(stallTimer);
     }
     status.textContent = isVideo ? 'Upload complete — creating your share link…' : 'Upload complete — building your answering-machine video…';
 
@@ -1752,7 +1774,7 @@ async function approveAndContinue(){
   const originalLabel = button ? button.textContent : '';
   if(button){
     button.disabled=true;
-    button.textContent = S.mode==='audio' ? 'Building your share video…' : 'Creating your share link…';
+    button.textContent = S.mode==='audio' ? 'Uploading your voice message…' : 'Uploading your video…';
   }
 
   try{
