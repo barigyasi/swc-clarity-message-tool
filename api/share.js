@@ -1,4 +1,4 @@
-const { put, head } = require('@vercel/blob');
+const { put } = require('@vercel/blob');
 
 const SHARE_ID_RE = /^[A-Za-z0-9_-]{16,48}$/;
 
@@ -23,23 +23,36 @@ function parseBody(request) {
   return {};
 }
 
+function normalizeStoreId(value) {
+  const storeId = String(value || '').trim();
+  return storeId.startsWith('store_') ? storeId.slice('store_'.length) : storeId;
+}
+
 function parseMediaUrl(value) {
-  const mediaUrl = String(value || '');
   let url;
   try {
-    url = new URL(mediaUrl);
+    url = new URL(String(value || ''));
   } catch {
     throw new Error('invalid media url');
   }
 
-  if (
-    url.protocol !== 'https:' ||
-    !url.hostname.endsWith('.public.blob.vercel-storage.com') ||
-    !url.pathname.startsWith('/submissions/')
-  ) {
-    throw new Error('invalid media url');
+  const storeId = normalizeStoreId(process.env.BLOB_STORE_ID);
+  if (!storeId) {
+    throw new Error('Blob storage is not connected to this deployment');
   }
 
+  const expectedHostname = `${storeId}.public.blob.vercel-storage.com`;
+  if (
+    url.protocol !== 'https:' ||
+    url.hostname !== expectedHostname ||
+    !url.pathname.startsWith('/submissions/')
+  ) {
+    throw new Error('media does not belong to this project Blob store');
+  }
+
+  // Public Blob playback does not require query parameters.
+  url.search = '';
+  url.hash = '';
   return url.href;
 }
 
@@ -62,16 +75,13 @@ module.exports = async (request, response) => {
       return response.status(400).json({ error: 'invalid media mode' });
     }
 
-    // Verifies that this media belongs to the Blob store connected to this project.
-    const media = await head(mediaUrl);
-    if (!media.pathname.startsWith('submissions/')) {
-      return response.status(400).json({ error: 'invalid media path' });
-    }
-
+    // The upload result is already a signed response from the project's exact
+    // Blob store. Do not immediately call head() here: a just-written public
+    // object can briefly race its metadata lookup and make valid uploads fail.
     const record = {
       shareId,
       mode,
-      mediaUrl: media.url,
+      mediaUrl,
       createdAt: new Date().toISOString(),
     };
 
@@ -88,7 +98,7 @@ module.exports = async (request, response) => {
     });
   } catch (error) {
     console.error('share registration failed', error);
-    return response.status(400).json({
+    return response.status(500).json({
       error: error instanceof Error ? error.message : 'share registration failed',
     });
   }

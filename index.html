@@ -954,7 +954,7 @@ const WHY_PROMPTS = [
 ];
 
 /* ---------------- state ---------------- */
-const S = { mode:null, blob:null, blobURL:null, mime:'', swcVideoUrl:null, compositeDownloadUrl:null, shareFile:null, shareId:null, compositePending:false, pledgeAccepted:false, voiceEnabled:true };
+const S = { mode:null, blob:null, blobURL:null, mime:'', swcVideoUrl:null, compositeDownloadUrl:null, shareFile:null, shareId:null, uploadedMediaUrl:null, compositePending:false, pledgeAccepted:false, voiceEnabled:true };
 const MAX_VIDEO_SECONDS = 60;
 const MAX_AUDIO_SECONDS = 54; // leaves room for the answering-machine intro/outro so the final MP4 stays under 60s
 let mediaStream=null, recorder=null, chunks=[], recStart=0, timerInt=null;
@@ -1189,6 +1189,8 @@ function beginRecording(){
   if(S.blobURL){ try{URL.revokeObjectURL(S.blobURL);}catch(e){} }
   S.blobURL=null;
   S.swcVideoUrl=null;
+  S.shareId=null;
+  S.uploadedMediaUrl=null;
   S.compositeDownloadUrl=null;
   recordingFinalizing=false;
   recordingFinalized=false;
@@ -1303,6 +1305,8 @@ async function finalizeRecording(){
   }
 
   S.blob = blob;
+  S.shareId=null;
+  S.uploadedMediaUrl=null;
   if(S.blobURL) URL.revokeObjectURL(S.blobURL);
   S.blobURL = nextURL;
   resetRecordingUi();
@@ -1639,16 +1643,26 @@ async function fetchWithTimeout(url, options={}, milliseconds=30000){
 }
 
 async function registerShare(shareId, mediaUrl, mode){
-  const response = await fetchWithTimeout('/api/share', {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({shareId, mediaUrl, mode}),
-  }, 30000);
-  if(!response.ok){
-    const body = await response.json().catch(()=>({}));
-    throw new Error(body.error || 'share registration failed');
+  let lastError = new Error('share registration failed');
+  for(let attempt=1; attempt<=3; attempt++){
+    try{
+      const response = await fetchWithTimeout('/api/share', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({shareId, mediaUrl, mode}),
+      }, 30000);
+      const body = await response.json().catch(()=>({}));
+      if(response.ok) return body;
+      lastError = new Error(body.error || `share registration failed (${response.status})`);
+      if(response.status >= 400 && response.status < 500 && response.status !== 408 && response.status !== 429){
+        throw lastError;
+      }
+    }catch(error){
+      lastError = error instanceof Error ? error : new Error(String(error));
+    }
+    if(attempt < 3) await new Promise(resolve=>setTimeout(resolve, attempt * 900));
   }
-  return response.json();
+  throw lastError;
 }
 
 async function uploadToSWC(blob, meta){
@@ -1656,105 +1670,111 @@ async function uploadToSWC(blob, meta){
   const uploadSizeMB = Math.max(0.1, blob.size / (1024 * 1024));
   status.textContent=`Preparing secure upload (${uploadSizeMB.toFixed(1)} MB)…`;
   status.className='upload-status';
-  const shareId = makeShareId();
+  const shareId = S.shareId || makeShareId();
   S.shareId = shareId;
   const uploadMeta = {...meta, shareId};
 
   try{
     if(navigator.onLine===false) throw new Error('This device is offline.');
-    const mod = await promiseWithTimeout(
-      import('https://esm.sh/@vercel/blob@2.6.1/client'),
-      20000,
-      'The upload service took too long to load.'
-    );
     const isVideo = meta.mode==='video';
-    const ext = (S.mime||'').includes('mp4') ? (isVideo?'mp4':'m4a') : 'webm';
-    const safeState = (meta.state||'na').replace(/[^a-zA-Z0-9-]/g,'');
-    const pathname = `submissions/${Date.now()}-${safeState}-${meta.mode}.${ext}`;
-    const uploadController = new AbortController();
-    const uploadTimer = setTimeout(()=>uploadController.abort(), 5 * 60 * 1000);
-    let lastLoaded = 0;
-    let lastProgressAt = Date.now();
-    const stallTimer = setInterval(()=>{
-      // A connection that transfers no additional bytes for 45 seconds is
-      // considered stalled. Keep the local recording so the user can retry.
-      if(Date.now() - lastProgressAt > 45000) uploadController.abort();
-    }, 5000);
-    let result;
-    try{
-      result = await mod.uploadPresigned(pathname, blob, {
-        access:'public',
-        handleUploadUrl:'/api/blob-upload',
-        contentType: blob.type || (isVideo?'video/webm':'audio/webm'),
-        clientPayload: JSON.stringify(uploadMeta),
-        // Campaign recordings are capped at 75 MB. Vercel recommends
-        // multipart uploads for files above 100 MB; forcing multipart for
-        // ordinary iPhone recordings can add avoidable setup/concurrency work.
-        multipart: false,
-        abortSignal: uploadController.signal,
-        onUploadProgress: ({loaded, total, percentage})=>{
-          const loadedBytes = Number(loaded) || 0;
-          if(loadedBytes > lastLoaded){
-            lastLoaded = loadedBytes;
-            lastProgressAt = Date.now();
-          }
-          const pct = Math.max(0, Math.min(100, Math.round(Number(percentage)||0)));
-          const sentMB = loadedBytes / (1024 * 1024);
-          const totalMB = (Number(total) || blob.size) / (1024 * 1024);
-          status.textContent = `Uploading your ${isVideo?'video':'voice message'}… ${pct}% (${sentMB.toFixed(1)} of ${totalMB.toFixed(1)} MB)`;
-          const approveButton = $('btn-approve');
-          if(approveButton) approveButton.textContent = `Uploading… ${pct}%`;
-        },
-      });
-    }finally{
-      clearTimeout(uploadTimer);
-      clearInterval(stallTimer);
+    let result = S.uploadedMediaUrl ? {url:S.uploadedMediaUrl} : null;
+
+    if(!result){
+      const mod = await promiseWithTimeout(
+        import('https://esm.sh/@vercel/blob@2.6.1/client'),
+        20000,
+        'The upload service took too long to load.'
+      );
+      const ext = (S.mime||'').includes('mp4') ? (isVideo?'mp4':'m4a') : 'webm';
+      const safeState = (meta.state||'na').replace(/[^a-zA-Z0-9-]/g,'');
+      const pathname = `submissions/${Date.now()}-${safeState}-${meta.mode}.${ext}`;
+      const uploadController = new AbortController();
+      const uploadTimer = setTimeout(()=>uploadController.abort(), 5 * 60 * 1000);
+      try{
+        result = await mod.uploadPresigned(pathname, blob, {
+          access:'public',
+          handleUploadUrl:'/api/blob-upload',
+          contentType: blob.type || (isVideo?'video/webm':'audio/webm'),
+          clientPayload: JSON.stringify(uploadMeta),
+          multipart: false,
+          abortSignal: uploadController.signal,
+          onUploadProgress: ({loaded, total, percentage})=>{
+            const pct = Math.max(0, Math.min(100, Math.round(Number(percentage)||0)));
+            const loadedBytes = Number(loaded);
+            const totalBytes = Number(total) || blob.size;
+            if(Number.isFinite(loadedBytes) && loadedBytes > 0){
+              const sentMB = loadedBytes / (1024 * 1024);
+              const totalMB = totalBytes / (1024 * 1024);
+              status.textContent = `Uploading your ${isVideo?'video':'voice message'}… ${pct}% (${sentMB.toFixed(1)} of ${totalMB.toFixed(1)} MB)`;
+            }else{
+              status.textContent = `Uploading your ${isVideo?'video':'voice message'}… ${pct}%`;
+            }
+            const approveButton = $('btn-approve');
+            if(approveButton) approveButton.textContent = `Uploading… ${pct}%`;
+          },
+        });
+      }finally{
+        clearTimeout(uploadTimer);
+      }
+      if(!result || !result.url) throw new Error('Blob upload returned no media URL');
+      S.uploadedMediaUrl = result.url;
+    }else{
+      status.textContent = isVideo
+        ? 'Video already uploaded — finishing your public link…'
+        : 'Voice message already uploaded — finishing your answering-machine video…';
     }
-    status.textContent = isVideo ? 'Upload complete — creating your share link…' : 'Upload complete — building your answering-machine video…';
+
+    status.textContent = isVideo
+      ? 'Upload complete — creating your share link…'
+      : 'Upload complete — building your answering-machine video…';
 
     if(meta.mode==='audio'){
       S.compositePending=true;
-      status.textContent='Saved — building your answering-machine video…';
       try{
         const res = await fetchWithTimeout('/api/composite', {
           method:'POST',
           headers:{'Content-Type':'application/json'},
           body: JSON.stringify({audioUrl: result.url, shareId}),
         }, 180000);
-        if(!res.ok) throw new Error('composite failed');
-        const c = await res.json();
-        S.swcVideoUrl = c.watchUrl;
-        S.compositeDownloadUrl = c.downloadUrl;
+        const body = await res.json().catch(()=>({}));
+        if(!res.ok) throw new Error(body.error || `answering-machine render failed (${res.status})`);
+        S.swcVideoUrl = body.watchUrl;
+        S.compositeDownloadUrl = body.downloadUrl;
         S.compositePending=false;
         prepSendLinks();
         status.textContent='Saved — your voicemail video is ready and linked in your X post.';
         status.className='upload-status ok';
-      }catch(e){
-        console.error('composite failed', e);
+      }catch(compositeError){
+        console.error('composite failed; using audio watch fallback', compositeError);
         S.compositePending=false;
         const share = await registerShare(shareId, result.url, 'audio');
         S.swcVideoUrl = share.watchUrl;
         prepSendLinks();
-        status.textContent='Saved for SWC — thank you. The shared link will play your audio message.';
+        status.textContent='Saved — your public link is ready. The watch page will play your voice message.';
         status.className='upload-status ok';
       }
-    } else {
+    }else{
       const share = await registerShare(shareId, result.url, 'video');
       S.swcVideoUrl = share.watchUrl;
       prepSendLinks();
-      status.textContent='Saved for SWC — thank you.';
+      status.textContent='Saved — your public video link is ready.';
       status.className='upload-status ok';
     }
 
     trackEvent('Submission Uploaded', {mode:meta.mode||'unknown', state:meta.state||'unknown'});
     return true;
   }catch(e){
-    console.error('SWC upload failed', e);
+    console.error('SWC upload/share failed', e);
     S.compositePending=false;
-    const timedOut = e && (e.name==='AbortError' || /timed out|too long/i.test(e.message||''));
-    status.textContent = timedOut
-      ? 'The upload timed out. Your recording is still on this page—check your connection and tap Approve & Continue again.'
-      : 'We could not upload the recording. Your recording is still on this page—please tap Approve & Continue again.';
+    const message = e && e.message ? e.message : 'Unknown error';
+    const timedOut = e && (e.name==='AbortError' || /timed out|too long/i.test(message));
+    if(S.uploadedMediaUrl){
+      status.textContent = `Your recording uploaded, but the public link could not be finished (${message}). Tap Approve & Continue to retry without uploading again.`;
+    }else{
+      status.textContent = timedOut
+        ? 'The upload timed out. Your recording is still on this page—check your connection and tap Approve & Continue again.'
+        : `We could not upload the recording (${message}). Your recording is still on this page—please tap Approve & Continue again.`;
+    }
     status.className='upload-status err';
     return false;
   }
@@ -1774,7 +1794,9 @@ async function approveAndContinue(){
   const originalLabel = button ? button.textContent : '';
   if(button){
     button.disabled=true;
-    button.textContent = S.mode==='audio' ? 'Uploading your voice message…' : 'Uploading your video…';
+    button.textContent = S.uploadedMediaUrl
+      ? 'Finishing your public link…'
+      : (S.mode==='audio' ? 'Uploading your voice message…' : 'Uploading your video…');
   }
 
   try{
@@ -1789,15 +1811,14 @@ async function approveAndContinue(){
       consent,
     });
 
-    if(!ok || !S.swcVideoUrl){
-      throw new Error('share link was not created');
-    }
-
+    if(!ok || !S.swcVideoUrl) return;
     showSenators();
   }catch(e){
     console.error('share-link creation failed', e);
-    status.textContent='We could not create the public video link. Please try Approve & Continue again.';
-    status.className='upload-status err';
+    if(!status.textContent || !status.classList.contains('err')){
+      status.textContent=`We could not create the public link (${e && e.message ? e.message : 'unknown error'}). Please try again.`;
+      status.className='upload-status err';
+    }
   }finally{
     if(button){
       button.disabled=false;

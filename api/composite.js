@@ -1,4 +1,4 @@
-const { put, head } = require('@vercel/blob');
+const { put } = require('@vercel/blob');
 const ffmpegPath = require('ffmpeg-static');
 const { execFile } = require('child_process');
 const { promisify } = require('util');
@@ -19,10 +19,29 @@ const UNIT_LEN = 3.003;
 const MAX_TOTAL_SECONDS = 60;
 const MAX_MSG_SECONDS = MAX_TOTAL_SECONDS - INTRO_END - GAP - OUTRO;
 
-async function download(url, dest) {
-  const response = await fetch(url);
-  if (!response.ok) throw new Error(`fetch failed: ${response.status}`);
-  fs.writeFileSync(dest, Buffer.from(await response.arrayBuffer()));
+function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function download(url, dest, attempts = 5) {
+  let lastError;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      const response = await fetch(url, { cache: 'no-store' });
+      if (!response.ok) throw new Error(`fetch failed: ${response.status}`);
+      fs.writeFileSync(dest, Buffer.from(await response.arrayBuffer()));
+      return;
+    } catch (error) {
+      lastError = error;
+      if (attempt < attempts) await wait(attempt * 750);
+    }
+  }
+  throw lastError || new Error('fetch failed');
+}
+
+function normalizeStoreId(value) {
+  const storeId = String(value || '').trim();
+  return storeId.startsWith('store_') ? storeId.slice('store_'.length) : storeId;
 }
 
 async function ffmpegDuration(file) {
@@ -71,22 +90,18 @@ module.exports = async (request, response) => {
     return response.status(400).json({ error: 'bad url' });
   }
 
+  const storeId = normalizeStoreId(process.env.BLOB_STORE_ID);
+  const expectedHostname = storeId
+    ? `${storeId}.public.blob.vercel-storage.com`
+    : '';
+
   if (
+    !expectedHostname ||
     url.protocol !== 'https:' ||
-    !url.hostname.endsWith('.public.blob.vercel-storage.com') ||
+    url.hostname !== expectedHostname ||
     !url.pathname.startsWith('/submissions/') ||
     !/\.(webm|m4a|mp4|ogg)$/i.test(url.pathname)
   ) {
-    return response.status(400).json({ error: 'bad url' });
-  }
-
-  try {
-    // Verifies that the source audio belongs to this project's connected Blob store.
-    const source = await head(audioUrl);
-    if (!source.pathname.startsWith('submissions/')) {
-      return response.status(400).json({ error: 'bad url' });
-    }
-  } catch {
     return response.status(400).json({ error: 'bad url' });
   }
 
@@ -173,7 +188,7 @@ module.exports = async (request, response) => {
     });
   } catch (error) {
     console.error('composite failed', error);
-    return response.status(500).json({ error: 'composite failed' });
+    return response.status(500).json({ error: error instanceof Error ? error.message : 'composite failed' });
   } finally {
     try {
       fs.rmSync(tmp, { recursive: true, force: true });
