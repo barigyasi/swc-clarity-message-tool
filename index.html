@@ -958,7 +958,8 @@ const S = { mode:null, blob:null, blobURL:null, mime:'', swcVideoUrl:null, compo
 const MAX_VIDEO_SECONDS = 60;
 const MAX_AUDIO_SECONDS = 54; // leaves room for the answering-machine intro/outro so the final MP4 stays under 60s
 let mediaStream=null, recorder=null, chunks=[], recStart=0, timerInt=null;
-let recordingFinalizing=false, recordingFinalized=false, stopWatchdog=null;
+let recordingFinalizing=false, recordingFinalized=false, stopWatchdog=null, expectedRecordingSeconds=0;
+const IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 let whySelected=[], whyListRendered='';
 let tpAnim=null, tpY=0, tpLast=0;
 
@@ -1184,6 +1185,11 @@ function toggleRecord(){
 }
 function beginRecording(){
   chunks=[];
+  S.blob=null;
+  if(S.blobURL){ try{URL.revokeObjectURL(S.blobURL);}catch(e){} }
+  S.blobURL=null;
+  S.swcVideoUrl=null;
+  S.compositeDownloadUrl=null;
   recordingFinalizing=false;
   recordingFinalized=false;
   clearTimeout(stopWatchdog);
@@ -1210,9 +1216,11 @@ function beginRecording(){
     failRecordingFinalize('The phone could not finish the recording. Please try again without screen recording enabled.');
   };
 
-  // Ask the browser for a chunk every second. This makes the final Stop step
-  // much lighter on iPhones than holding the entire recording until the end.
-  recorder.start(1000);
+  // Safari/iOS can produce truncated fragmented MP4s when a timeslice is used,
+  // especially while the phone is also screen recording. Let iOS emit one final
+  // complete MP4 on stop; other browsers can continue emitting one-second chunks.
+  if(IS_IOS) recorder.start();
+  else recorder.start(1000);
   recStart=Date.now();
   trackEvent('Recording Started', {mode:S.mode||'unknown', state:$('f-state').value||'unknown'});
   $('rec-ind').style.display='flex';
@@ -1247,13 +1255,31 @@ function resetRecordingUi(){
   b.style.background='';
 }
 
-function finalizeRecording(){
+async function readRecordedDuration(blobURL){
+  return new Promise((resolve)=>{
+    const media = document.createElement(S.mode==='video' ? 'video' : 'audio');
+    let settled=false;
+    const finish=(value)=>{
+      if(settled) return;
+      settled=true;
+      clearTimeout(timer);
+      try{ media.pause(); media.removeAttribute('src'); media.load(); }catch(e){}
+      resolve(value);
+    };
+    const timer=setTimeout(()=>finish(null), 12000);
+    media.preload='metadata';
+    media.onloadedmetadata=()=>finish(Number.isFinite(media.duration) ? media.duration : null);
+    media.onerror=()=>finish(null);
+    media.src=blobURL;
+  });
+}
+
+async function finalizeRecording(){
   if(recordingFinalized) return;
   recordingFinalized=true;
   recordingFinalizing=false;
   clearTimeout(stopWatchdog);
   stopWatchdog=null;
-  resetRecordingUi();
 
   if(!chunks.length){
     recordingFinalized=false;
@@ -1261,14 +1287,29 @@ function finalizeRecording(){
     return;
   }
 
-  const recordedSeconds = Math.max(1, Math.round((Date.now()-recStart)/1000));
-  S.blob = new Blob(chunks, {type: S.mime || (S.mode==='video'?'video/webm':'audio/webm')});
+  const type = S.mime || (S.mode==='video'?'video/webm':'audio/webm');
+  const blob = new Blob(chunks, {type});
+  const nextURL = URL.createObjectURL(blob);
+  const duration = await readRecordedDuration(nextURL);
+
+  // Never accept a partial fallback recording. If Safari captured materially less
+  // than the on-screen timer, keep the user on the recorder instead of uploading
+  // a clipped or malformed file.
+  if(Number.isFinite(duration) && expectedRecordingSeconds >= 8 && duration < expectedRecordingSeconds - 3){
+    URL.revokeObjectURL(nextURL);
+    recordingFinalized=false;
+    failRecordingFinalize(`The phone only saved about ${Math.round(duration)} seconds of a ${Math.round(expectedRecordingSeconds)}-second recording. Please re-record with iPhone Screen Recording turned off.`);
+    return;
+  }
+
+  S.blob = blob;
   if(S.blobURL) URL.revokeObjectURL(S.blobURL);
-  S.blobURL = URL.createObjectURL(S.blob);
+  S.blobURL = nextURL;
+  resetRecordingUi();
+  const recordedSeconds = Math.max(1, Math.round(duration || expectedRecordingSeconds || ((Date.now()-recStart)/1000)));
   trackEvent('Recording Completed', {mode:S.mode||'unknown', seconds:recordedSeconds});
   showReview();
 }
-
 function failRecordingFinalize(message){
   if(recordingFinalized && chunks.length) return;
   recordingFinalized=true;
@@ -1286,6 +1327,7 @@ function failRecordingFinalize(message){
 function stopRecording(){
   if(!recorder || recorder.state!=='recording' || recordingFinalizing) return;
   recordingFinalizing=true;
+  expectedRecordingSeconds = Math.max(1, (Date.now()-recStart)/1000);
 
   clearInterval(timerInt);
   timerInt=null;
@@ -1299,9 +1341,10 @@ function stopRecording(){
   b.textContent='Finishing video…';
   b.style.background='var(--muted)';
 
-  // Flush a partial chunk first, then request the final chunk and stop event.
-  try { if(typeof recorder.requestData==='function') recorder.requestData(); } catch(e) {}
   try {
+    // recorder.stop() itself requests the final dataavailable event. Calling
+    // requestData() immediately beforehand can split Safari's MP4 at the wrong
+    // boundary, so do not force a partial chunk here.
     recorder.stop();
   } catch(e) {
     console.error('Could not stop MediaRecorder', e);
@@ -1309,19 +1352,13 @@ function stopRecording(){
     return;
   }
 
-  // Safari should fire dataavailable + stop. If it stalls under device pressure,
-  // use the one-second chunks already collected rather than leaving the UI frozen.
+  // Do not build a video from incomplete chunks. If Safari cannot finish within
+  // 30 seconds, fail visibly and ask for a new take rather than silently clipping it.
   stopWatchdog=setTimeout(()=>{
     if(recordingFinalized) return;
-    if(chunks.length){
-      console.warn('MediaRecorder stop event timed out; finalizing available chunks.');
-      finalizeRecording();
-    } else {
-      failRecordingFinalize('The phone took too long to finish the video. Please try again without screen recording enabled.');
-    }
-  },10000);
+    failRecordingFinalize('The phone could not finish the video. Please try again with iPhone Screen Recording turned off and close other camera apps.');
+  },30000);
 }
-
 function cancelRecording(){
   clearTimeout(stopWatchdog);
   stopWatchdog=null;
@@ -1583,12 +1620,30 @@ function finish(){
 }
 
 /* ---------------- consent + SWC storage ---------------- */
+function promiseWithTimeout(promise, milliseconds, message){
+  let timer;
+  return Promise.race([
+    promise.finally(()=>clearTimeout(timer)),
+    new Promise((_, reject)=>{ timer=setTimeout(()=>reject(new Error(message||'Request timed out')), milliseconds); }),
+  ]);
+}
+
+async function fetchWithTimeout(url, options={}, milliseconds=30000){
+  const controller = new AbortController();
+  const timer = setTimeout(()=>controller.abort(), milliseconds);
+  try{
+    return await fetch(url, {...options, signal:controller.signal});
+  }finally{
+    clearTimeout(timer);
+  }
+}
+
 async function registerShare(shareId, mediaUrl, mode){
-  const response = await fetch('/api/share', {
+  const response = await fetchWithTimeout('/api/share', {
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify({shareId, mediaUrl, mode}),
-  });
+  }, 30000);
   if(!response.ok){
     const body = await response.json().catch(()=>({}));
     throw new Error(body.error || 'share registration failed');
@@ -1604,28 +1659,46 @@ async function uploadToSWC(blob, meta){
   const uploadMeta = {...meta, shareId};
 
   try{
-    const mod = await import('https://esm.sh/@vercel/blob@2.6.1/client');
+    if(navigator.onLine===false) throw new Error('This device is offline.');
+    const mod = await promiseWithTimeout(
+      import('https://esm.sh/@vercel/blob@2.6.1/client'),
+      20000,
+      'The upload service took too long to load.'
+    );
     const isVideo = meta.mode==='video';
     const ext = (S.mime||'').includes('mp4') ? (isVideo?'mp4':'m4a') : 'webm';
     const safeState = (meta.state||'na').replace(/[^a-zA-Z0-9-]/g,'');
     const pathname = `submissions/${Date.now()}-${safeState}-${meta.mode}.${ext}`;
-    const result = await mod.uploadPresigned(pathname, blob, {
-      access:'public',
-      handleUploadUrl:'/api/blob-upload',
-      contentType: blob.type || (isVideo?'video/webm':'audio/webm'),
-      clientPayload: JSON.stringify(uploadMeta),
-      multipart: blob.size > 10 * 1024 * 1024,
-    });
+    const uploadController = new AbortController();
+    const uploadTimer = setTimeout(()=>uploadController.abort(), 120000);
+    let result;
+    try{
+      result = await mod.uploadPresigned(pathname, blob, {
+        access:'public',
+        handleUploadUrl:'/api/blob-upload',
+        contentType: blob.type || (isVideo?'video/webm':'audio/webm'),
+        clientPayload: JSON.stringify(uploadMeta),
+        multipart: blob.size > 10 * 1024 * 1024,
+        abortSignal: uploadController.signal,
+        onUploadProgress: ({percentage})=>{
+          const pct = Math.max(0, Math.min(100, Math.round(Number(percentage)||0)));
+          status.textContent = `Uploading your ${isVideo?'video':'voice message'}… ${pct}%`;
+        },
+      });
+    }finally{
+      clearTimeout(uploadTimer);
+    }
+    status.textContent = isVideo ? 'Upload complete — creating your share link…' : 'Upload complete — building your answering-machine video…';
 
     if(meta.mode==='audio'){
       S.compositePending=true;
       status.textContent='Saved — building your answering-machine video…';
       try{
-        const res = await fetch('/api/composite', {
+        const res = await fetchWithTimeout('/api/composite', {
           method:'POST',
           headers:{'Content-Type':'application/json'},
           body: JSON.stringify({audioUrl: result.url, shareId}),
-        });
+        }, 180000);
         if(!res.ok) throw new Error('composite failed');
         const c = await res.json();
         S.swcVideoUrl = c.watchUrl;
@@ -1656,7 +1729,10 @@ async function uploadToSWC(blob, meta){
   }catch(e){
     console.error('SWC upload failed', e);
     S.compositePending=false;
-    status.textContent="Couldn't save a copy for SWC, but your message still works below.";
+    const timedOut = e && (e.name==='AbortError' || /timed out|too long/i.test(e.message||''));
+    status.textContent = timedOut
+      ? 'The upload timed out. Your recording is still on this page—check your connection and tap Approve & Continue again.'
+      : 'We could not upload the recording. Your recording is still on this page—please tap Approve & Continue again.';
     status.className='upload-status err';
     return false;
   }
