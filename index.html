@@ -958,6 +958,7 @@ const S = { mode:null, blob:null, blobURL:null, mime:'', swcVideoUrl:null, compo
 const MAX_VIDEO_SECONDS = 60;
 const MAX_AUDIO_SECONDS = 54; // leaves room for the answering-machine intro/outro so the final MP4 stays under 60s
 let mediaStream=null, recorder=null, chunks=[], recStart=0, timerInt=null;
+let recordingFinalizing=false, recordingFinalized=false, stopWatchdog=null;
 let whySelected=[], whyListRendered='';
 let tpAnim=null, tpY=0, tpLast=0;
 
@@ -1147,8 +1148,13 @@ async function initCapture(){
     // portrait capture on mobile, landscape on desktop
     const portrait = window.matchMedia('(max-width: 560px)').matches;
     const videoConstraints = portrait
-      ? {facingMode:'user', width:{ideal:720}, height:{ideal:1280}}
-      : {facingMode:'user', width:{ideal:1280}};
+      ? {
+          facingMode:'user',
+          width:{ideal:540, max:720},
+          height:{ideal:960, max:1280},
+          frameRate:{ideal:24, max:30}
+        }
+      : {facingMode:'user', width:{ideal:1280}, frameRate:{ideal:24, max:30}};
     mediaStream = await navigator.mediaDevices.getUserMedia({
       audio:true, video: video ? videoConstraints : false
     });
@@ -1178,28 +1184,35 @@ function toggleRecord(){
 }
 function beginRecording(){
   chunks=[];
+  recordingFinalizing=false;
+  recordingFinalized=false;
+  clearTimeout(stopWatchdog);
+  stopWatchdog=null;
+
   const prefs = S.mode==='video'
     ? ['video/mp4','video/webm;codecs=vp9','video/webm']
     : ['audio/mp4','audio/webm;codecs=opus','audio/webm'];
   S.mime = prefs.find(m=>window.MediaRecorder && MediaRecorder.isTypeSupported(m)) || '';
   const recorderOptions = S.mime ? {mimeType:S.mime} : {};
+  const mobileCapture = window.matchMedia('(max-width: 560px)').matches;
   if(S.mode==='video'){
-    recorderOptions.videoBitsPerSecond = 2500000;
-    recorderOptions.audioBitsPerSecond = 128000;
+    recorderOptions.videoBitsPerSecond = mobileCapture ? 1500000 : 2500000;
+    recorderOptions.audioBitsPerSecond = mobileCapture ? 96000 : 128000;
   } else {
     recorderOptions.audioBitsPerSecond = 128000;
   }
+
   recorder = new MediaRecorder(mediaStream, recorderOptions);
-  recorder.ondataavailable = e=>{ if(e.data.size) chunks.push(e.data); };
-  recorder.onstop = ()=>{
-    const recordedSeconds = Math.max(1, Math.round((Date.now()-recStart)/1000));
-    S.blob = new Blob(chunks, {type: S.mime || (S.mode==='video'?'video/webm':'audio/webm')});
-    if(S.blobURL) URL.revokeObjectURL(S.blobURL);
-    S.blobURL = URL.createObjectURL(S.blob);
-    trackEvent('Recording Completed', {mode:S.mode||'unknown', seconds:recordedSeconds});
-    showReview();
+  recorder.ondataavailable = e=>{ if(e.data && e.data.size) chunks.push(e.data); };
+  recorder.onstop = finalizeRecording;
+  recorder.onerror = e=>{
+    console.error('MediaRecorder error', e && e.error ? e.error : e);
+    failRecordingFinalize('The phone could not finish the recording. Please try again without screen recording enabled.');
   };
-  recorder.start();
+
+  // Ask the browser for a chunk every second. This makes the final Stop step
+  // much lighter on iPhones than holding the entire recording until the end.
+  recorder.start(1000);
   recStart=Date.now();
   trackEvent('Recording Started', {mode:S.mode||'unknown', state:$('f-state').value||'unknown'});
   $('rec-ind').style.display='flex';
@@ -1220,17 +1233,106 @@ function beginRecording(){
   },250);
   startTeleprompter();
 }
-function stopRecording(){
-  if(recorder && recorder.state==='recording') recorder.stop();
-  cancelRecording();
-}
-function cancelRecording(){
+
+function resetRecordingUi(){
   clearInterval(timerInt);
-  cancelAnimationFrame(tpAnim);
+  timerInt=null;
+  if(tpAnim) cancelAnimationFrame(tpAnim);
+  tpAnim=null;
   $('rec-ind').style.display='none';
   $('stage').classList.remove('recording');
   const b=$('btn-rec');
-  b.textContent='● Start Recording'; b.style.background='';
+  b.disabled=false;
+  b.textContent='● Start Recording';
+  b.style.background='';
+}
+
+function finalizeRecording(){
+  if(recordingFinalized) return;
+  recordingFinalized=true;
+  recordingFinalizing=false;
+  clearTimeout(stopWatchdog);
+  stopWatchdog=null;
+  resetRecordingUi();
+
+  if(!chunks.length){
+    recordingFinalized=false;
+    failRecordingFinalize('No video data was produced. Please try again without screen recording enabled.');
+    return;
+  }
+
+  const recordedSeconds = Math.max(1, Math.round((Date.now()-recStart)/1000));
+  S.blob = new Blob(chunks, {type: S.mime || (S.mode==='video'?'video/webm':'audio/webm')});
+  if(S.blobURL) URL.revokeObjectURL(S.blobURL);
+  S.blobURL = URL.createObjectURL(S.blob);
+  trackEvent('Recording Completed', {mode:S.mode||'unknown', seconds:recordedSeconds});
+  showReview();
+}
+
+function failRecordingFinalize(message){
+  if(recordingFinalized && chunks.length) return;
+  recordingFinalized=true;
+  recordingFinalizing=false;
+  clearTimeout(stopWatchdog);
+  stopWatchdog=null;
+  resetRecordingUi();
+  stopStream();
+  const box=$('perm-error');
+  box.innerHTML='<b>Recording could not be finished.</b><br>' + message;
+  box.style.display='block';
+  $('btn-retry-perm').style.display='inline-flex';
+}
+
+function stopRecording(){
+  if(!recorder || recorder.state!=='recording' || recordingFinalizing) return;
+  recordingFinalizing=true;
+
+  clearInterval(timerInt);
+  timerInt=null;
+  if(tpAnim) cancelAnimationFrame(tpAnim);
+  tpAnim=null;
+  $('rec-ind').style.display='none';
+  $('stage').classList.remove('recording');
+
+  const b=$('btn-rec');
+  b.disabled=true;
+  b.textContent='Finishing video…';
+  b.style.background='var(--muted)';
+
+  // Flush a partial chunk first, then request the final chunk and stop event.
+  try { if(typeof recorder.requestData==='function') recorder.requestData(); } catch(e) {}
+  try {
+    recorder.stop();
+  } catch(e) {
+    console.error('Could not stop MediaRecorder', e);
+    failRecordingFinalize('The recorder stopped unexpectedly. Please try again.');
+    return;
+  }
+
+  // Safari should fire dataavailable + stop. If it stalls under device pressure,
+  // use the one-second chunks already collected rather than leaving the UI frozen.
+  stopWatchdog=setTimeout(()=>{
+    if(recordingFinalized) return;
+    if(chunks.length){
+      console.warn('MediaRecorder stop event timed out; finalizing available chunks.');
+      finalizeRecording();
+    } else {
+      failRecordingFinalize('The phone took too long to finish the video. Please try again without screen recording enabled.');
+    }
+  },10000);
+}
+
+function cancelRecording(){
+  clearTimeout(stopWatchdog);
+  stopWatchdog=null;
+  if(recorder && recorder.state==='recording'){
+    recorder.onstop=null;
+    recorder.onerror=null;
+    try { recorder.stop(); } catch(e) {}
+  }
+  recordingFinalizing=false;
+  recordingFinalized=true;
+  resetRecordingUi();
 }
 function resetTeleprompter(){ tpY=0; $('tp-text').style.transform='translateY(0)'; }
 function startTeleprompter(){
