@@ -1702,7 +1702,15 @@ async function uploadToSWC(blob, meta){
         20000,
         'The upload service took too long to load.'
       );
-      const ext = (S.mime||'').includes('mp4') ? (isVideo?'mp4':'m4a') : 'webm';
+      const rawContentType = blob.type || (isVideo ? 'video/webm' : 'audio/webm');
+      // MediaRecorder may return values such as
+      // "video/webm;codecs=vp8,opus". The Blob upload token allowlist uses
+      // base MIME types, so strip codec parameters before requesting/uploading.
+      const uploadContentType = rawContentType.split(';')[0].trim().toLowerCase();
+      const uploadBlob = rawContentType === uploadContentType
+        ? blob
+        : blob.slice(0, blob.size, uploadContentType);
+      const ext = uploadContentType.includes('mp4') ? (isVideo?'mp4':'m4a') : 'webm';
       const safeState = (meta.state||'na').replace(/[^a-zA-Z0-9-]/g,'');
       const pathname = `submissions/${Date.now()}-${safeState}-${meta.mode}.${ext}`;
       const uploadController = new AbortController();
@@ -1711,7 +1719,7 @@ async function uploadToSWC(blob, meta){
         const uploadOptions = {
           access:'public',
           handleUploadUrl:'/api/blob-upload',
-          contentType: blob.type || (isVideo?'video/webm':'audio/webm'),
+          contentType: uploadContentType,
           clientPayload: JSON.stringify(uploadMeta),
           multipart: false,
           abortSignal: uploadController.signal,
@@ -1741,7 +1749,7 @@ async function uploadToSWC(blob, meta){
           if(approveButton) approveButton.textContent = 'Uploading…';
         }
 
-        result = await mod.uploadPresigned(pathname, blob, uploadOptions);
+        result = await mod.uploadPresigned(pathname, uploadBlob, uploadOptions);
       }finally{
         clearTimeout(uploadTimer);
       }
