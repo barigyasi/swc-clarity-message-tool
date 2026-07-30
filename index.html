@@ -954,7 +954,7 @@ const WHY_PROMPTS = [
 ];
 
 /* ---------------- state ---------------- */
-const S = { mode:null, blob:null, blobURL:null, mime:'', swcVideoUrl:null, compositeDownloadUrl:null, shareFile:null, shareId:null, uploadedMediaUrl:null, compositePending:false, pledgeAccepted:false, voiceEnabled:true };
+const S = { mode:null, blob:null, blobURL:null, mime:'', swcVideoUrl:null, compositeDownloadUrl:null, shareFile:null, shareId:null, uploadedMediaUrl:null, normalizedMediaUrl:null, recordedSeconds:0, compositePending:false, pledgeAccepted:false, voiceEnabled:true };
 const MAX_VIDEO_SECONDS = 60;
 const MAX_AUDIO_SECONDS = 54; // leaves room for the answering-machine intro/outro so the final MP4 stays under 60s
 let mediaStream=null, recorder=null, chunks=[], recStart=0, timerInt=null;
@@ -1191,21 +1191,33 @@ function beginRecording(){
   S.swcVideoUrl=null;
   S.shareId=null;
   S.uploadedMediaUrl=null;
+  S.normalizedMediaUrl=null;
+  S.recordedSeconds=0;
   S.compositeDownloadUrl=null;
   recordingFinalizing=false;
   recordingFinalized=false;
   clearTimeout(stopWatchdog);
   stopWatchdog=null;
 
+  // WebKit has had an iOS regression where MP4 MediaRecorder files lose the
+  // end of the video track while audio continues. On iOS, prefer WebM when
+  // available, then normalize it to a standard MP4 on the server after upload.
+  const videoPrefs = IS_IOS
+    ? ['video/webm;codecs=vp8,opus','video/webm;codecs=vp9,opus','video/webm','video/mp4']
+    : ['video/mp4','video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'];
   const prefs = S.mode==='video'
-    ? ['video/mp4','video/webm;codecs=vp9','video/webm']
+    ? videoPrefs
     : ['audio/mp4','audio/webm;codecs=opus','audio/webm'];
   S.mime = prefs.find(m=>window.MediaRecorder && MediaRecorder.isTypeSupported(m)) || '';
   const recorderOptions = S.mime ? {mimeType:S.mime} : {};
   const mobileCapture = window.matchMedia('(max-width: 560px)').matches;
   if(S.mode==='video'){
-    recorderOptions.videoBitsPerSecond = mobileCapture ? 1500000 : 2500000;
-    recorderOptions.audioBitsPerSecond = mobileCapture ? 96000 : 128000;
+    // Let WebKit choose its native encoder bitrate on iOS. Forcing a bitrate
+    // adds encoder pressure and does not prevent the MP4 track-loss bug.
+    if(!IS_IOS){
+      recorderOptions.videoBitsPerSecond = mobileCapture ? 1500000 : 2500000;
+      recorderOptions.audioBitsPerSecond = mobileCapture ? 96000 : 128000;
+    }
   } else {
     recorderOptions.audioBitsPerSecond = 128000;
   }
@@ -1218,10 +1230,10 @@ function beginRecording(){
     failRecordingFinalize('The phone could not finish the recording. Please try again without screen recording enabled.');
   };
 
-  // Safari/iOS can produce truncated fragmented MP4s when a timeslice is used,
-  // especially while the phone is also screen recording. Let iOS emit one final
-  // complete MP4 on stop; other browsers can continue emitting one-second chunks.
-  if(IS_IOS) recorder.start();
+  // WebM is streamable, so collect one-second chunks on iOS when WebM is
+  // available. If iOS falls back to MP4, keep the single-final-chunk behavior.
+  const iOSWebM = IS_IOS && /video\/webm/i.test(S.mime || '');
+  if(IS_IOS && !iOSWebM) recorder.start();
   else recorder.start(1000);
   recStart=Date.now();
   trackEvent('Recording Started', {mode:S.mode||'unknown', state:$('f-state').value||'unknown'});
@@ -1307,10 +1319,12 @@ async function finalizeRecording(){
   S.blob = blob;
   S.shareId=null;
   S.uploadedMediaUrl=null;
+  S.normalizedMediaUrl=null;
+  S.recordedSeconds = Math.max(1, Math.round(duration || expectedRecordingSeconds || ((Date.now()-recStart)/1000)));
   if(S.blobURL) URL.revokeObjectURL(S.blobURL);
   S.blobURL = nextURL;
   resetRecordingUi();
-  const recordedSeconds = Math.max(1, Math.round(duration || expectedRecordingSeconds || ((Date.now()-recStart)/1000)));
+  const recordedSeconds = S.recordedSeconds;
   trackEvent('Recording Completed', {mode:S.mode||'unknown', seconds:recordedSeconds});
   showReview();
 }
@@ -1565,18 +1579,21 @@ function showToast(msg){
 }
 async function prepareShareFile(){
   try{
-    if(S.mode==='video' && S.blob){
-      const ext=(S.mime||'').includes('mp4')?'mp4':'webm';
-      S.shareFile = new File([S.blob], 'clarity-act-message.'+ext, {type:S.blob.type||'video/webm'});
-    } else if(S.compositeDownloadUrl){
+    // Server-normalized iOS video and answering-machine video are both standard
+    // MP4 files. Prefer them over the raw local MediaRecorder file for X/share.
+    if(S.compositeDownloadUrl){
       const src=S.compositeDownloadUrl.replace('?download=1','');
       if(S.shareFile && S.shareFile._src===src) { S.compositePending=false; updateShareDesc(); return; }
       const r=await fetch(src);
       if(!r.ok) throw new Error('fetch failed');
       const b=await r.blob();
-      S.shareFile=new File([b], 'clarity-voicemail.mp4', {type:'video/mp4'});
+      const filename = S.mode==='video' ? 'clarity-act-message.mp4' : 'clarity-voicemail.mp4';
+      S.shareFile=new File([b], filename, {type:'video/mp4'});
       S.shareFile._src=src;
       S.compositePending=false;
+    } else if(S.mode==='video' && S.blob){
+      const ext=(S.mime||'').includes('mp4')?'mp4':'webm';
+      S.shareFile = new File([S.blob], 'clarity-act-message.'+ext, {type:S.blob.type||'video/webm'});
     } else {
       S.shareFile=null;  // audio with no composite: the share menu can't carry it to X reliably
     }
@@ -1766,10 +1783,37 @@ async function uploadToSWC(blob, meta){
         status.className='upload-status ok';
       }
     }else{
-      const share = await registerShare(shareId, result.url, 'video');
+      let publicVideoUrl = S.normalizedMediaUrl || result.url;
+
+      // iOS MediaRecorder MP4 files can lose the end of the video track while
+      // keeping the full audio. Normalize every iOS video into H.264/AAC MP4
+      // before creating the public link or downloadable/X share file.
+      if(IS_IOS && !S.normalizedMediaUrl){
+        status.textContent='Upload complete — optimizing your iPhone video…';
+        const approveButton = $('btn-approve');
+        if(approveButton) approveButton.textContent='Optimizing video…';
+        const normalizeResponse = await fetchWithTimeout('/api/normalize-video', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({
+            videoUrl: result.url,
+            shareId,
+            expectedSeconds: S.recordedSeconds || expectedRecordingSeconds || 0,
+          }),
+        }, 180000);
+        const normalized = await normalizeResponse.json().catch(()=>({}));
+        if(!normalizeResponse.ok || !normalized.mediaUrl){
+          throw new Error(normalized.error || `video optimization failed (${normalizeResponse.status})`);
+        }
+        publicVideoUrl = normalized.mediaUrl;
+        S.normalizedMediaUrl = normalized.mediaUrl;
+        S.compositeDownloadUrl = normalized.downloadUrl || normalized.mediaUrl + '?download=1';
+      }
+
+      const share = await registerShare(shareId, publicVideoUrl, 'video');
       S.swcVideoUrl = share.watchUrl;
       prepSendLinks();
-      status.textContent='Saved — your public video link is ready.';
+      status.textContent='Saved — your full video is ready.';
       status.className='upload-status ok';
     }
 

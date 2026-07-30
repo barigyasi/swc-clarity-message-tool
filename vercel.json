@@ -4,6 +4,10 @@
     "api/composite.js": {
       "maxDuration": 180,
       "memory": 2048
+    },
+    "api/normalize-video.js": {
+      "maxDuration": 180,
+      "memory": 2048
     }
   },
   "rewrites": [
