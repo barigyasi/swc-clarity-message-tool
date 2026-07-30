@@ -1791,32 +1791,14 @@ async function uploadToSWC(blob, meta){
         status.className='upload-status ok';
       }
     }else{
-      let publicVideoUrl = S.normalizedMediaUrl || result.url;
-
-      // iOS MediaRecorder MP4 files can lose the end of the video track while
-      // keeping the full audio. Normalize every iOS video into H.264/AAC MP4
-      // before creating the public link or downloadable/X share file.
-      if(IS_IOS && !S.normalizedMediaUrl){
-        status.textContent='Upload complete — optimizing your iPhone video…';
-        const approveButton = $('btn-approve');
-        if(approveButton) approveButton.textContent='Optimizing video…';
-        const normalizeResponse = await fetchWithTimeout('/api/normalize-video', {
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({
-            videoUrl: result.url,
-            shareId,
-            expectedSeconds: S.recordedSeconds || expectedRecordingSeconds || 0,
-          }),
-        }, 180000);
-        const normalized = await normalizeResponse.json().catch(()=>({}));
-        if(!normalizeResponse.ok || !normalized.mediaUrl){
-          throw new Error(normalized.error || `video optimization failed (${normalizeResponse.status})`);
-        }
-        publicVideoUrl = normalized.mediaUrl;
-        S.normalizedMediaUrl = normalized.mediaUrl;
-        S.compositeDownloadUrl = normalized.downloadUrl || normalized.mediaUrl + '?download=1';
-      }
+      // Launch-safe iOS path: the uploaded WebM is already the format chosen to
+      // avoid Safari's truncated MP4 bug. Create the public link immediately
+      // instead of blocking the user on a second FFmpeg/Vercel Function step.
+      // The normalization endpoint remains in the project for later testing,
+      // but it is deliberately not part of the live submission path.
+      const publicVideoUrl = result.url;
+      S.normalizedMediaUrl = null;
+      S.compositeDownloadUrl = null;
 
       const share = await registerShare(shareId, publicVideoUrl, 'video');
       S.swcVideoUrl = share.watchUrl;
